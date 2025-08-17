@@ -14,7 +14,7 @@ interface ICrowdfundingFactory {
         string memory tokenName,
         string memory tokenSymbol
     ) external returns (uint256 campaignId);
-    
+
     function getCampaign(uint256 campaignId) external view returns (CampaignData memory);
     function getCampaignsByCreator(address creator) external view returns (uint256[] memory);
     function getCampaignCount() external view returns (uint256);
@@ -28,7 +28,7 @@ interface ICampaign {
     function createLiquidityPool() external;
     function extendDeadline(uint256 newDeadline) external;
     function updateCampaignState() external;
-    
+
     function getCampaignDetails() external view returns (CampaignData memory);
     function getContribution(address contributor) external view returns (Contribution memory);
     function calculateTokenAllocation(uint256 contributionAmount) external view returns (uint256);
@@ -42,17 +42,15 @@ interface ICampaignToken {
 }
 
 interface IDEXIntegrator {
-    function addLiquidity(
-        address token,
-        uint256 tokenAmount,
-        uint256 ethAmount
-    ) external payable returns (uint256 amountToken, uint256 amountETH, uint256 liquidity);
-    
-    function getOptimalLiquidityAmounts(
-        address token,
-        uint256 tokenDesired,
-        uint256 ethDesired
-    ) external view returns (uint256 tokenAmount, uint256 ethAmount);
+    function addLiquidity(address token, uint256 tokenAmount, uint256 ethAmount)
+        external
+        payable
+        returns (uint256 amountToken, uint256 amountETH, uint256 liquidity);
+
+    function getOptimalLiquidityAmounts(address token, uint256 tokenDesired, uint256 ethDesired)
+        external
+        view
+        returns (uint256 tokenAmount, uint256 ethAmount);
 }
 
 interface IPricingCurve {
