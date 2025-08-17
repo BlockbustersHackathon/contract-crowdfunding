@@ -180,7 +180,7 @@ contract Campaign is ICampaign, ICampaignEvents, ReentrancyGuard, Ownable {
 
         IERC20(address(campaignToken)).approve(address(dexIntegrator), creatorTokens);
 
-        (uint256 tokenAmount, uint256 ethAmount, uint256 liquidity) =
+        (uint256 tokenAmount, uint256 ethAmount,) =
             dexIntegrator.addLiquidity{value: ethForLiquidity}(address(campaignToken), creatorTokens, ethForLiquidity);
 
         uint256 remainingETH = campaignData.totalRaised - ethAmount;

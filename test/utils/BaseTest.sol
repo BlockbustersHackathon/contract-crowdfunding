@@ -119,14 +119,14 @@ contract BaseTest is Test {
     }
 
     // Custom assertions
-    function assertContributionExists(uint256 campaignId, address contributor, uint256 expectedAmount) internal {
+    function assertContributionExists(uint256 campaignId, address contributor, uint256 expectedAmount) internal view {
         Campaign campaign = getCampaign(campaignId);
         Contribution memory contribution = campaign.getContribution(contributor);
         assertEq(contribution.amount, expectedAmount);
         assertEq(contribution.contributor, contributor);
     }
 
-    function assertTokenBalance(address token, address account, uint256 expectedBalance) internal {
+    function assertTokenBalance(address token, address account, uint256 expectedBalance) internal view {
         assertEq(IERC20(token).balanceOf(account), expectedBalance);
     }
 }

@@ -223,7 +223,7 @@ contract ContributionFuzzTest is BaseTest {
         campaign.updateCampaignState();
 
         CampaignState state = campaign.getCampaignState();
-        CampaignData memory data = campaign.getCampaignDetails();
+        // CampaignData memory data = campaign.getCampaignDetails();
 
         if (timeWarp <= CAMPAIGN_DURATION) {
             // Should still be active if deadline not passed
@@ -258,7 +258,7 @@ contract ContributionFuzzTest is BaseTest {
         uint256 fundingGoal,
         uint256 timeRemaining,
         uint256 totalDuration
-    ) public {
+    ) public view {
         contribution = bound(contribution, 1, 1000 ether);
         totalRaised = bound(totalRaised, 0, 10000 ether);
         fundingGoal = bound(fundingGoal, 1 ether, 10000 ether);

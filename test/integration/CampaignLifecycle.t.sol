@@ -94,8 +94,8 @@ contract CampaignLifecycleTest is BaseTest {
         CampaignData memory data = campaign.getCampaignDetails();
 
         // Creator should have received remaining ETH after liquidity
-        uint256 expectedLiquidityETH = (FUNDING_GOAL * LIQUIDITY_PERCENTAGE) / 100;
-        uint256 expectedRemainingETH = FUNDING_GOAL - expectedLiquidityETH;
+        // uint256 expectedLiquidityETH = (FUNDING_GOAL * LIQUIDITY_PERCENTAGE) / 100;
+        // uint256 expectedRemainingETH = FUNDING_GOAL - expectedLiquidityETH;
 
         // 6. Contributors can claim tokens
         vm.prank(contributor1);

@@ -4,7 +4,7 @@ pragma solidity ^0.8.24;
 import "../utils/BaseTest.sol";
 
 contract PricingCurveTest is BaseTest {
-    function test_CalculateTokenAllocation_BaseRate() public {
+    function test_CalculateTokenAllocation_BaseRate() public view {
         uint256 contribution = 1 ether;
         uint256 totalRaised = 0;
         uint256 fundingGoal = 10 ether;
@@ -20,7 +20,7 @@ contract PricingCurveTest is BaseTest {
         assertEq(tokens, expectedBaseTokens + earlyBirdBonus);
     }
 
-    function test_CalculateTokenAllocation_EarlyBirdBonus() public {
+    function test_CalculateTokenAllocation_EarlyBirdBonus() public view {
         uint256 contribution = 1 ether;
         uint256 totalRaised = 0;
         uint256 fundingGoal = 10 ether;
@@ -48,7 +48,7 @@ contract PricingCurveTest is BaseTest {
         assertEq(earlyTokens, expectedEarlyTokens);
     }
 
-    function test_CalculateTokenAllocation_FundingProgressBonus() public {
+    function test_CalculateTokenAllocation_FundingProgressBonus() public view {
         uint256 contribution = 1 ether;
         uint256 fundingGoal = 10 ether;
         uint256 timeRemaining = CAMPAIGN_DURATION / 2;
@@ -70,7 +70,7 @@ contract PricingCurveTest is BaseTest {
         assertGt(lowFundingTokens, highFundingTokens);
     }
 
-    function test_CalculateTokenAllocation_CombinedBonuses() public {
+    function test_CalculateTokenAllocation_CombinedBonuses() public view {
         uint256 contribution = 1 ether;
         uint256 totalRaised = 1 ether; // 10% funded
         uint256 fundingGoal = 10 ether;
@@ -99,7 +99,7 @@ contract PricingCurveTest is BaseTest {
         pricingCurve.calculateTokenAllocation(1 ether, 0, 10 ether, 0, 0);
     }
 
-    function test_CalculateTokenAllocation_CampaignEnded() public {
+    function test_CalculateTokenAllocation_CampaignEnded() public view {
         uint256 contribution = 1 ether;
         uint256 totalRaised = 5 ether;
         uint256 fundingGoal = 10 ether;
@@ -114,7 +114,7 @@ contract PricingCurveTest is BaseTest {
         assertEq(tokens, baseTokens);
     }
 
-    function test_CalculateTokenAllocation_DifferentContributionAmounts() public {
+    function test_CalculateTokenAllocation_DifferentContributionAmounts() public view {
         uint256[] memory contributions = new uint256[](4);
         contributions[0] = 0.1 ether;
         contributions[1] = 1 ether;
@@ -137,7 +137,7 @@ contract PricingCurveTest is BaseTest {
         }
     }
 
-    function test_CalculateTokenAllocation_EdgeCases() public {
+    function test_CalculateTokenAllocation_EdgeCases() public view {
         uint256 contribution = 1 ether;
         uint256 fundingGoal = 10 ether;
         uint256 totalDuration = CAMPAIGN_DURATION;
@@ -157,17 +157,17 @@ contract PricingCurveTest is BaseTest {
         assertGt(thresholdTokens, afterThresholdTokens);
     }
 
-    function test_GetTokenRate() public {
+    function test_GetTokenRate() public view {
         uint256 rate = pricingCurve.getTokenRate();
         assertEq(rate, 1000);
     }
 
-    function test_GetEarlyBirdBonus() public {
+    function test_GetEarlyBirdBonus() public view {
         uint256 bonus = pricingCurve.getEarlyBirdBonus();
         assertEq(bonus, 20);
     }
 
-    function test_CalculateTokenAllocation_HighPrecision() public {
+    function test_CalculateTokenAllocation_HighPrecision() public view {
         // Test with very small contributions to check precision
         uint256 contribution = 1 wei;
         uint256 totalRaised = 0;

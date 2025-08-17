@@ -15,7 +15,7 @@ contract CampaignTokenTest is BaseTest {
         token = new CampaignToken("Test Campaign Token", "TCT", mockCampaign, deployer);
     }
 
-    function test_Constructor_Success() public {
+    function test_Constructor_Success() public view {
         assertEq(token.name(), "Test Campaign Token");
         assertEq(token.symbol(), "TCT");
         assertEq(token.decimals(), 18);
@@ -163,7 +163,7 @@ contract CampaignTokenTest is BaseTest {
         assertEq(token.allowance(contributor1, contributor2), 0);
     }
 
-    function test_GetCampaignAddress() public {
+    function test_GetCampaignAddress() public view {
         assertEq(token.getCampaignAddress(), mockCampaign);
     }
 

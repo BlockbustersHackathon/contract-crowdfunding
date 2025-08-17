@@ -158,7 +158,7 @@ contract CrowdfundingFactory is ICrowdfundingFactory, ICampaignEvents, Ownable, 
     }
 
     // Emergency functions
-    function pauseCampaign(uint256 campaignId) external onlyOwner {
+    function pauseCampaign(uint256 campaignId) external view onlyOwner {
         require(campaignId < campaignCounter, "CrowdfundingFactory: Campaign does not exist");
         // Implementation would depend on adding pause functionality to Campaign contract
     }
