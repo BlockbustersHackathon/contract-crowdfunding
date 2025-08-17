@@ -14,7 +14,7 @@ contract PricingCurve is IPricingCurve {
     uint256 public constant EARLY_BIRD_DURATION = 7 days; // First week gets early bird bonus
     uint256 public constant EARLY_BIRD_BONUS_BPS = 1500; // 15% bonus
     uint256 public constant MAX_BONUS_BPS = 5000; // Max 50% bonus
-    
+
     // Base token price calculation: tokens per ETH at start
     uint256 public constant BASE_TOKENS_PER_ETH = 1000;
 
@@ -34,18 +34,18 @@ contract PricingCurve is IPricingCurve {
         ContributionTier[] calldata tiers
     ) external pure override returns (uint256 tokenAmount, uint256 tier) {
         require(contributionAmount > 0, "Contribution must be positive");
-        
+
         // Find appropriate tier
         tier = _findTier(contributionAmount, tiers);
-        
+
         // Calculate base token amount
         uint256 basePrice = getCurrentPrice(totalRaised, fundingGoal);
         uint256 baseTokens = (contributionAmount * BASE_TOKENS_PER_ETH) / basePrice;
-        
+
         // Apply tier bonus
         uint256 bonusMultiplier = getBonusMultiplier(tier, tiers);
         tokenAmount = (baseTokens * bonusMultiplier) / BASIS_POINTS;
-        
+
         return (tokenAmount, tier);
     }
 
@@ -57,15 +57,15 @@ contract PricingCurve is IPricingCurve {
      */
     function getCurrentPrice(uint256 totalRaised, uint256 fundingGoal) public pure override returns (uint256) {
         require(fundingGoal > 0, "Funding goal must be positive");
-        
+
         // Simple bonding curve: price increases as more funds are raised
         // Price = basePrice * (1 + (totalRaised / fundingGoal) * 0.5)
         // This means price increases by 50% when goal is reached
-        
+
         uint256 basePrice = 1e18 / BASE_TOKENS_PER_ETH; // Price per token in wei
         uint256 progressMultiplier = (totalRaised * 5000) / fundingGoal; // 50% max increase
         uint256 priceMultiplier = BASIS_POINTS + progressMultiplier;
-        
+
         return (basePrice * priceMultiplier) / BASIS_POINTS;
     }
 
@@ -75,14 +75,19 @@ contract PricingCurve is IPricingCurve {
      * @param tiers Array of contribution tiers
      * @return Bonus multiplier in basis points
      */
-    function getBonusMultiplier(uint256 tierIndex, ContributionTier[] calldata tiers) public pure override returns (uint256) {
+    function getBonusMultiplier(uint256 tierIndex, ContributionTier[] calldata tiers)
+        public
+        pure
+        override
+        returns (uint256)
+    {
         if (tierIndex >= tiers.length) {
             return BASIS_POINTS; // No bonus for invalid tier
         }
-        
+
         uint256 bonus = tiers[tierIndex].bonusMultiplier;
         require(bonus <= BASIS_POINTS + MAX_BONUS_BPS, "Bonus too high");
-        
+
         return bonus;
     }
 
@@ -93,17 +98,18 @@ contract PricingCurve is IPricingCurve {
      * @param startTime Campaign start time
      * @return Discounted price
      */
-    function getDiscountedPrice(
-        uint256 basePrice,
-        uint256 timestamp,
-        uint256 startTime
-    ) external pure override returns (uint256) {
+    function getDiscountedPrice(uint256 basePrice, uint256 timestamp, uint256 startTime)
+        external
+        pure
+        override
+        returns (uint256)
+    {
         if (timestamp <= startTime + EARLY_BIRD_DURATION) {
             // Apply early bird discount
             uint256 discountMultiplier = BASIS_POINTS - EARLY_BIRD_BONUS_BPS;
             return (basePrice * discountMultiplier) / BASIS_POINTS;
         }
-        
+
         return basePrice;
     }
 
@@ -127,13 +133,9 @@ contract PricingCurve is IPricingCurve {
         ContributionTier[] calldata tiers
     ) external view returns (uint256 tokenAmount, uint256 tier) {
         // Calculate base tokens with tier bonus
-        (uint256 baseTokens, uint256 tierUsed) = this.calculateTokensForContribution(
-            contributionAmount,
-            totalRaised,
-            fundingGoal,
-            tiers
-        );
-        
+        (uint256 baseTokens, uint256 tierUsed) =
+            this.calculateTokensForContribution(contributionAmount, totalRaised, fundingGoal, tiers);
+
         // Apply early bird bonus if applicable
         if (timestamp <= startTime + EARLY_BIRD_DURATION) {
             uint256 earlyBirdMultiplier = BASIS_POINTS + EARLY_BIRD_BONUS_BPS;
@@ -141,7 +143,7 @@ contract PricingCurve is IPricingCurve {
         } else {
             tokenAmount = baseTokens;
         }
-        
+
         return (tokenAmount, tierUsed);
     }
 
@@ -152,13 +154,13 @@ contract PricingCurve is IPricingCurve {
      * @param fundingGoal Campaign funding goal
      * @return Projected future price
      */
-    function projectFuturePrice(
-        uint256 currentRaised,
-        uint256 targetRaised,
-        uint256 fundingGoal
-    ) external pure returns (uint256) {
+    function projectFuturePrice(uint256 currentRaised, uint256 targetRaised, uint256 fundingGoal)
+        external
+        pure
+        returns (uint256)
+    {
         require(targetRaised >= currentRaised, "Target must be >= current");
-        
+
         return getCurrentPrice(targetRaised, fundingGoal);
     }
 
@@ -169,11 +171,11 @@ contract PricingCurve is IPricingCurve {
      * @param fundingGoal Campaign funding goal
      * @return Average price for the contribution
      */
-    function calculateAveragePrice(
-        uint256 contributionAmount,
-        uint256 currentRaised,
-        uint256 fundingGoal
-    ) external pure returns (uint256) {
+    function calculateAveragePrice(uint256 contributionAmount, uint256 currentRaised, uint256 fundingGoal)
+        external
+        pure
+        returns (uint256)
+    {
         // For simplicity, use price at midpoint of contribution
         uint256 midpointRaised = currentRaised + (contributionAmount / 2);
         return getCurrentPrice(midpointRaised, fundingGoal);
@@ -190,15 +192,16 @@ contract PricingCurve is IPricingCurve {
         for (uint256 i = tiers.length; i > 0; i--) {
             uint256 tierIndex = i - 1;
             ContributionTier memory tier = tiers[tierIndex];
-            
+
             // Check if contribution fits this tier and slots are available
-            if (amount >= tier.minContribution &&
-                (tier.maxContribution == 0 || amount <= tier.maxContribution) &&
-                tier.usedSlots < tier.availableSlots) {
+            if (
+                amount >= tier.minContribution && (tier.maxContribution == 0 || amount <= tier.maxContribution)
+                    && tier.usedSlots < tier.availableSlots
+            ) {
                 return tierIndex;
             }
         }
-        
+
         // If no tier matches, return tiers.length to indicate no valid tier
         return tiers.length;
     }
@@ -210,19 +213,20 @@ contract PricingCurve is IPricingCurve {
      * @return isValid Whether the amount is valid
      * @return tierIndex Index of the tier it would use
      */
-    function validateContribution(
-        uint256 amount,
-        ContributionTier[] calldata tiers
-    ) external pure returns (bool isValid, uint256 tierIndex) {
+    function validateContribution(uint256 amount, ContributionTier[] calldata tiers)
+        external
+        pure
+        returns (bool isValid, uint256 tierIndex)
+    {
         tierIndex = _findTier(amount, tiers);
-        
+
         if (tierIndex < tiers.length) {
             ContributionTier memory tier = tiers[tierIndex];
             isValid = tier.usedSlots < tier.availableSlots;
         } else {
             isValid = false;
         }
-        
+
         return (isValid, tierIndex);
     }
 
@@ -235,21 +239,25 @@ contract PricingCurve is IPricingCurve {
      * @return availableSlots Available slots per tier
      * @return usedSlots Used slots per tier
      */
-    function getTierInfo(ContributionTier[] calldata tiers) external pure returns (
-        uint256[] memory minAmounts,
-        uint256[] memory maxAmounts,
-        uint256[] memory bonuses,
-        uint256[] memory availableSlots,
-        uint256[] memory usedSlots
-    ) {
+    function getTierInfo(ContributionTier[] calldata tiers)
+        external
+        pure
+        returns (
+            uint256[] memory minAmounts,
+            uint256[] memory maxAmounts,
+            uint256[] memory bonuses,
+            uint256[] memory availableSlots,
+            uint256[] memory usedSlots
+        )
+    {
         uint256 length = tiers.length;
-        
+
         minAmounts = new uint256[](length);
         maxAmounts = new uint256[](length);
         bonuses = new uint256[](length);
         availableSlots = new uint256[](length);
         usedSlots = new uint256[](length);
-        
+
         for (uint256 i = 0; i < length; i++) {
             minAmounts[i] = tiers[i].minContribution;
             maxAmounts[i] = tiers[i].maxContribution;
@@ -257,7 +265,7 @@ contract PricingCurve is IPricingCurve {
             availableSlots[i] = tiers[i].availableSlots;
             usedSlots[i] = tiers[i].usedSlots;
         }
-        
+
         return (minAmounts, maxAmounts, bonuses, availableSlots, usedSlots);
     }
 }

@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Pausable.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/Pausable.sol";
 import "./interfaces/ICampaignInterfaces.sol";
 
 /**
@@ -18,14 +19,14 @@ import "./interfaces/ICampaignInterfaces.sol";
 contract CampaignToken is ERC20, ERC20Pausable, ERC20Permit, Ownable, ICampaignToken {
     // Campaign contract that controls this token
     address public immutable campaign;
-    
+
     // Whether transfers are enabled for regular holders
     bool public transfersEnabled;
-    
+
     // Token configuration
     uint256 public immutable maxSupply;
     uint256 public totalMinted;
-    
+
     // Events
     event TransfersEnabled();
     event TransfersDisabled();
@@ -42,16 +43,14 @@ contract CampaignToken is ERC20, ERC20Pausable, ERC20Permit, Ownable, ICampaignT
         _;
     }
 
-    constructor(
-        string memory name_,
-        string memory symbol_,
-        uint256 maxSupply_,
-        address campaign_,
-        address owner_
-    ) ERC20(name_, symbol_) ERC20Permit(name_) Ownable(owner_) {
+    constructor(string memory name_, string memory symbol_, uint256 maxSupply_, address campaign_, address owner_)
+        ERC20(name_, symbol_)
+        ERC20Permit(name_)
+        Ownable(owner_)
+    {
         require(campaign_ != address(0), "Invalid campaign address");
         require(maxSupply_ > 0, "Max supply must be positive");
-        
+
         campaign = campaign_;
         maxSupply = maxSupply_;
         transfersEnabled = false; // Disabled by default during campaign
@@ -69,7 +68,7 @@ contract CampaignToken is ERC20, ERC20Pausable, ERC20Permit, Ownable, ICampaignT
 
         totalMinted += amount;
         _mint(to, amount);
-        
+
         emit TokensMinted(to, amount);
     }
 
@@ -82,7 +81,7 @@ contract CampaignToken is ERC20, ERC20Pausable, ERC20Permit, Ownable, ICampaignT
         require(balanceOf(msg.sender) >= amount, "Insufficient balance");
 
         _burn(msg.sender, amount);
-        
+
         emit TokensBurned(msg.sender, amount);
     }
 
@@ -91,12 +90,12 @@ contract CampaignToken is ERC20, ERC20Pausable, ERC20Permit, Ownable, ICampaignT
      * @param from Address to burn tokens from
      * @param amount Amount of tokens to burn
      */
-    function burnFrom(address from, uint256 amount) external onlyCampaign {
+    function burnFrom(address from, uint256 amount) external override onlyCampaign {
         require(amount > 0, "Amount must be positive");
         require(balanceOf(from) >= amount, "Insufficient balance");
 
         _burn(from, amount);
-        
+
         emit TokensBurned(from, amount);
     }
 
@@ -142,11 +141,7 @@ contract CampaignToken is ERC20, ERC20Pausable, ERC20Permit, Ownable, ICampaignT
     /**
      * @dev Override transfer to check if transfers are enabled
      */
-    function _update(
-        address from,
-        address to,
-        uint256 value
-    ) internal virtual override(ERC20, ERC20Pausable) {
+    function _update(address from, address to, uint256 value) internal virtual override(ERC20, ERC20Pausable) {
         // Allow minting (from == address(0)) and burning (to == address(0))
         // Allow campaign contract to always transfer
         if (from != address(0) && to != address(0) && from != campaign) {
@@ -215,14 +210,18 @@ contract CampaignToken is ERC20, ERC20Pausable, ERC20Permit, Ownable, ICampaignT
     /**
      * @dev Transfer from one account to another
      */
-    function transferFrom(address from, address to, uint256 amount) public override(ERC20, ICampaignToken) returns (bool) {
+    function transferFrom(address from, address to, uint256 amount)
+        public
+        override(ERC20, ICampaignToken)
+        returns (bool)
+    {
         return super.transferFrom(from, to, amount);
     }
 
     /**
      * @dev Get remaining tokens that can be minted
      */
-    function remainingSupply() external view returns (uint256) {
+    function remainingSupply() external view override returns (uint256) {
         return maxSupply - totalMinted;
     }
 
@@ -234,16 +233,29 @@ contract CampaignToken is ERC20, ERC20Pausable, ERC20Permit, Ownable, ICampaignT
     }
 
     /**
+     * @dev Get voting power for an account (same as token balance)
+     * @param account Account to check voting power for
+     * @return Voting power (token balance)
+     */
+    function getVotingPower(address account) external view override returns (uint256) {
+        return balanceOf(account);
+    }
+
+    /**
+     * @dev Check if token is paused
+     * @return Whether the token is paused
+     */
+    function paused() public view override(Pausable, ICampaignToken) returns (bool) {
+        return super.paused();
+    }
+
+    /**
      * @dev Emergency function to recover accidentally sent tokens
      */
-    function emergencyTokenRecovery(
-        address tokenAddress,
-        address to,
-        uint256 amount
-    ) external onlyOwner {
+    function emergencyTokenRecovery(address tokenAddress, address to, uint256 amount) external onlyOwner {
         require(tokenAddress != address(this), "Cannot recover own tokens");
         require(to != address(0), "Invalid recipient");
-        
+
         IERC20 token = IERC20(tokenAddress);
         require(token.transfer(to, amount), "Transfer failed");
     }
@@ -254,7 +266,7 @@ contract CampaignToken is ERC20, ERC20Pausable, ERC20Permit, Ownable, ICampaignT
     function emergencyETHRecovery(address payable to, uint256 amount) external onlyOwner {
         require(to != address(0), "Invalid recipient");
         require(address(this).balance >= amount, "Insufficient balance");
-        
+
         to.transfer(amount);
     }
 }

@@ -11,27 +11,29 @@ import "./interfaces/ICampaignInterfaces.sol";
 interface IUniswapV2Router02 {
     function factory() external pure returns (address);
     function WETH() external pure returns (address);
-    
+
     function addLiquidityETH(
         address token,
-        uint amountTokenDesired,
-        uint amountTokenMin,
-        uint amountETHMin,
+        uint256 amountTokenDesired,
+        uint256 amountTokenMin,
+        uint256 amountETHMin,
         address to,
-        uint deadline
-    ) external payable returns (uint amountToken, uint amountETH, uint liquidity);
-    
+        uint256 deadline
+    ) external payable returns (uint256 amountToken, uint256 amountETH, uint256 liquidity);
+
     function removeLiquidityETH(
         address token,
-        uint liquidity,
-        uint amountTokenMin,
-        uint amountETHMin,
+        uint256 liquidity,
+        uint256 amountTokenMin,
+        uint256 amountETHMin,
         address to,
-        uint deadline
-    ) external returns (uint amountToken, uint amountETH);
-    
-    function getAmountsOut(uint amountIn, address[] calldata path)
-        external view returns (uint[] memory amounts);
+        uint256 deadline
+    ) external returns (uint256 amountToken, uint256 amountETH);
+
+    function getAmountsOut(uint256 amountIn, address[] calldata path)
+        external
+        view
+        returns (uint256[] memory amounts);
 }
 
 interface IUniswapV2Factory {
@@ -41,11 +43,11 @@ interface IUniswapV2Factory {
 
 interface IUniswapV2Pair {
     function getReserves() external view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast);
-    function totalSupply() external view returns (uint);
+    function totalSupply() external view returns (uint256);
     function token0() external view returns (address);
     function token1() external view returns (address);
-    function transfer(address to, uint value) external returns (bool);
-    function balanceOf(address account) external view returns (uint);
+    function transfer(address to, uint256 value) external returns (bool);
+    function balanceOf(address account) external view returns (uint256);
 }
 
 /**
@@ -58,22 +60,26 @@ contract DEXIntegrator is IDEXIntegrator, ReentrancyGuard, Ownable {
     // Uniswap V2 Router
     IUniswapV2Router02 public immutable uniswapRouter;
     IUniswapV2Factory public immutable uniswapFactory;
-    
+
     // Factory contract
     address public immutable factory;
-    
+
     // Liquidity lock duration (can be overridden per campaign)
     uint256 public defaultLockDuration = 365 days; // 1 year
-    
+
     // Locked liquidity tracking: pair => unlock timestamp
     mapping(address => uint256) public liquidityUnlockTime;
     mapping(address => address) public liquidityOwner; // pair => campaign creator
     mapping(address => uint256) public lockedLiquidity; // pair => LP token amount
-    
+
     // Events
     event PairCreated(address indexed token, address indexed pair);
-    event LiquidityAdded(address indexed token, address indexed pair, uint256 tokenAmount, uint256 ethAmount, uint256 liquidity);
-    event LiquidityRemoved(address indexed token, address indexed pair, uint256 liquidity, uint256 tokenAmount, uint256 ethAmount);
+    event LiquidityAdded(
+        address indexed token, address indexed pair, uint256 tokenAmount, uint256 ethAmount, uint256 liquidity
+    );
+    event LiquidityRemoved(
+        address indexed token, address indexed pair, uint256 liquidity, uint256 tokenAmount, uint256 ethAmount
+    );
     event LiquidityLocked(address indexed pair, uint256 unlockTime, uint256 amount);
     event LiquidityUnlocked(address indexed pair, address indexed owner, uint256 amount);
 
@@ -88,13 +94,10 @@ contract DEXIntegrator is IDEXIntegrator, ReentrancyGuard, Ownable {
         _;
     }
 
-    constructor(
-        address uniswapRouter_,
-        address factory_
-    ) Ownable(msg.sender) {
+    constructor(address uniswapRouter_, address factory_) Ownable(msg.sender) {
         require(uniswapRouter_ != address(0), "Invalid router address");
         require(factory_ != address(0), "Invalid factory address");
-        
+
         uniswapRouter = IUniswapV2Router02(uniswapRouter_);
         uniswapFactory = IUniswapV2Factory(IUniswapV2Router02(uniswapRouter_).factory());
         factory = factory_;
@@ -107,9 +110,9 @@ contract DEXIntegrator is IDEXIntegrator, ReentrancyGuard, Ownable {
      */
     function createUniswapPair(address token) external override onlyCampaign returns (address pair) {
         require(token != address(0), "Invalid token address");
-        
+
         address weth = uniswapRouter.WETH();
-        
+
         // Check if pair already exists
         pair = uniswapFactory.getPair(token, weth);
         if (pair == address(0)) {
@@ -117,7 +120,7 @@ contract DEXIntegrator is IDEXIntegrator, ReentrancyGuard, Ownable {
             pair = uniswapFactory.createPair(token, weth);
             emit PairCreated(token, pair);
         }
-        
+
         return pair;
     }
 
@@ -131,16 +134,14 @@ contract DEXIntegrator is IDEXIntegrator, ReentrancyGuard, Ownable {
      * @return amountETH Actual amount of ETH added
      * @return liquidity Amount of LP tokens minted
      */
-    function addInitialLiquidity(
-        address token,
-        uint256 tokenAmount,
-        uint256 ethAmount,
-        address to
-    ) external payable override onlyCampaign nonReentrant returns (
-        uint256 amountToken,
-        uint256 amountETH,
-        uint256 liquidity
-    ) {
+    function addInitialLiquidity(address token, uint256 tokenAmount, uint256 ethAmount, address to)
+        external
+        payable
+        override
+        onlyCampaign
+        nonReentrant
+        returns (uint256 amountToken, uint256 amountETH, uint256 liquidity)
+    {
         require(token != address(0), "Invalid token address");
         require(tokenAmount > 0, "Token amount must be positive");
         require(ethAmount > 0 && msg.value >= ethAmount, "Insufficient ETH");
@@ -148,10 +149,10 @@ contract DEXIntegrator is IDEXIntegrator, ReentrancyGuard, Ownable {
 
         // Transfer tokens from campaign to this contract
         IERC20(token).safeTransferFrom(msg.sender, address(this), tokenAmount);
-        
+
         // Approve router to spend tokens
         IERC20(token).approve(address(uniswapRouter), tokenAmount);
-        
+
         // Add liquidity
         (amountToken, amountETH, liquidity) = uniswapRouter.addLiquidityETH{value: ethAmount}(
             token,
@@ -161,17 +162,17 @@ contract DEXIntegrator is IDEXIntegrator, ReentrancyGuard, Ownable {
             to,
             block.timestamp + 300 // 5 minutes deadline
         );
-        
+
         // Refund excess ETH
         if (msg.value > amountETH) {
             payable(msg.sender).transfer(msg.value - amountETH);
         }
-        
+
         // Get pair address
         address pair = uniswapFactory.getPair(token, uniswapRouter.WETH());
-        
+
         emit LiquidityAdded(token, pair, amountToken, amountETH, liquidity);
-        
+
         return (amountToken, amountETH, liquidity);
     }
 
@@ -183,30 +184,29 @@ contract DEXIntegrator is IDEXIntegrator, ReentrancyGuard, Ownable {
      * @return amountToken Amount of tokens received
      * @return amountETH Amount of ETH received
      */
-    function removeLiquidity(
-        address token,
-        uint256 liquidity,
-        address to
-    ) external override onlyCampaign nonReentrant returns (
-        uint256 amountToken,
-        uint256 amountETH
-    ) {
+    function removeLiquidity(address token, uint256 liquidity, address to)
+        external
+        override
+        onlyCampaign
+        nonReentrant
+        returns (uint256 amountToken, uint256 amountETH)
+    {
         require(token != address(0), "Invalid token address");
         require(liquidity > 0, "Liquidity must be positive");
         require(to != address(0), "Invalid recipient");
 
         address pair = uniswapFactory.getPair(token, uniswapRouter.WETH());
         require(pair != address(0), "Pair does not exist");
-        
+
         // Check if liquidity is locked
         require(block.timestamp >= liquidityUnlockTime[pair], "Liquidity is locked");
-        
+
         // Transfer LP tokens from campaign to this contract
         IUniswapV2Pair(pair).transfer(address(this), liquidity);
-        
+
         // Approve router to spend LP tokens
         IERC20(pair).approve(address(uniswapRouter), liquidity);
-        
+
         // Remove liquidity
         (amountToken, amountETH) = uniswapRouter.removeLiquidityETH(
             token,
@@ -216,9 +216,9 @@ contract DEXIntegrator is IDEXIntegrator, ReentrancyGuard, Ownable {
             to,
             block.timestamp + 300 // 5 minutes deadline
         );
-        
+
         emit LiquidityRemoved(token, pair, liquidity, amountToken, amountETH);
-        
+
         return (amountToken, amountETH);
     }
 
@@ -228,26 +228,22 @@ contract DEXIntegrator is IDEXIntegrator, ReentrancyGuard, Ownable {
      * @param lockDuration Duration to lock liquidity (in seconds)
      * @param owner Address that will be able to unlock (campaign creator)
      */
-    function lockLiquidity(
-        address token,
-        uint256 lockDuration,
-        address owner
-    ) external onlyCampaign {
+    function lockLiquidity(address token, uint256 lockDuration, address owner) external onlyCampaign {
         require(token != address(0), "Invalid token address");
         require(lockDuration > 0, "Lock duration must be positive");
         require(owner != address(0), "Invalid owner address");
 
         address pair = uniswapFactory.getPair(token, uniswapRouter.WETH());
         require(pair != address(0), "Pair does not exist");
-        
+
         uint256 lpBalance = IUniswapV2Pair(pair).balanceOf(address(this));
         require(lpBalance > 0, "No LP tokens to lock");
-        
+
         uint256 unlockTime = block.timestamp + lockDuration;
         liquidityUnlockTime[pair] = unlockTime;
         liquidityOwner[pair] = owner;
         lockedLiquidity[pair] = lpBalance;
-        
+
         emit LiquidityLocked(pair, unlockTime, lpBalance);
     }
 
@@ -262,18 +258,18 @@ contract DEXIntegrator is IDEXIntegrator, ReentrancyGuard, Ownable {
         require(pair != address(0), "Pair does not exist");
         require(msg.sender == liquidityOwner[pair], "Not liquidity owner");
         require(block.timestamp >= liquidityUnlockTime[pair], "Liquidity still locked");
-        
+
         uint256 amount = lockedLiquidity[pair];
         require(amount > 0, "No liquidity to unlock");
-        
+
         // Reset lock data
         liquidityUnlockTime[pair] = 0;
         liquidityOwner[pair] = address(0);
         lockedLiquidity[pair] = 0;
-        
+
         // Transfer LP tokens to owner
         IUniswapV2Pair(pair).transfer(msg.sender, amount);
-        
+
         emit LiquidityUnlocked(pair, msg.sender, amount);
     }
 
@@ -284,14 +280,15 @@ contract DEXIntegrator is IDEXIntegrator, ReentrancyGuard, Ownable {
      * @param desiredPrice Desired price per token in wei
      * @return Required ETH amount
      */
-    function estimateRequiredETH(
-        address token,
-        uint256 tokenAmount,
-        uint256 desiredPrice
-    ) external pure override returns (uint256) {
+    function estimateRequiredETH(address token, uint256 tokenAmount, uint256 desiredPrice)
+        external
+        pure
+        override
+        returns (uint256)
+    {
         require(tokenAmount > 0, "Token amount must be positive");
         require(desiredPrice > 0, "Price must be positive");
-        
+
         // ETH required = tokenAmount * desiredPrice
         return tokenAmount * desiredPrice / 1e18;
     }
@@ -300,19 +297,20 @@ contract DEXIntegrator is IDEXIntegrator, ReentrancyGuard, Ownable {
      * @dev Get pool information for a token pair
      * @param pair Address of the pair
      * @return reserve0 Reserve of token0
-     * @return reserve1 Reserve of token1  
+     * @return reserve1 Reserve of token1
      * @return totalSupply Total LP token supply
      */
-    function getPoolInfo(address pair) external view override returns (
-        uint256 reserve0,
-        uint256 reserve1,
-        uint256 totalSupply
-    ) {
+    function getPoolInfo(address pair)
+        external
+        view
+        override
+        returns (uint256 reserve0, uint256 reserve1, uint256 totalSupply)
+    {
         require(pair != address(0), "Invalid pair address");
-        
+
         IUniswapV2Pair pairContract = IUniswapV2Pair(pair);
         (uint112 _reserve0, uint112 _reserve1,) = pairContract.getReserves();
-        
+
         return (uint256(_reserve0), uint256(_reserve1), pairContract.totalSupply());
     }
 
@@ -326,15 +324,15 @@ contract DEXIntegrator is IDEXIntegrator, ReentrancyGuard, Ownable {
         if (pair == address(0)) {
             return 0; // No pair exists
         }
-        
+
         (uint256 reserve0, uint256 reserve1,) = this.getPoolInfo(pair);
         if (reserve0 == 0 || reserve1 == 0) {
             return 0; // No liquidity
         }
-        
+
         // Determine which reserve is which token
         address token0 = IUniswapV2Pair(pair).token0();
-        
+
         if (token0 == token) {
             // token is token0, WETH is token1
             // Price = reserve1 / reserve0 (WETH per token)
@@ -353,21 +351,17 @@ contract DEXIntegrator is IDEXIntegrator, ReentrancyGuard, Ownable {
      * @return owner Who can unlock the liquidity
      * @return amount Amount of LP tokens locked
      */
-    function getLiquidityLockInfo(address token) external view returns (
-        uint256 unlockTime,
-        address owner,
-        uint256 amount
-    ) {
+    function getLiquidityLockInfo(address token)
+        external
+        view
+        returns (uint256 unlockTime, address owner, uint256 amount)
+    {
         address pair = uniswapFactory.getPair(token, uniswapRouter.WETH());
         if (pair == address(0)) {
             return (0, address(0), 0);
         }
-        
-        return (
-            liquidityUnlockTime[pair],
-            liquidityOwner[pair],
-            lockedLiquidity[pair]
-        );
+
+        return (liquidityUnlockTime[pair], liquidityOwner[pair], lockedLiquidity[pair]);
     }
 
     /**
@@ -385,14 +379,10 @@ contract DEXIntegrator is IDEXIntegrator, ReentrancyGuard, Ownable {
      * @param to Address to send tokens to
      * @param amount Amount to recover
      */
-    function emergencyTokenRecovery(
-        address token,
-        address to,
-        uint256 amount
-    ) external onlyOwner {
+    function emergencyTokenRecovery(address token, address to, uint256 amount) external onlyOwner {
         require(token != address(0), "Invalid token address");
         require(to != address(0), "Invalid recipient");
-        
+
         IERC20(token).safeTransfer(to, amount);
     }
 
@@ -404,7 +394,7 @@ contract DEXIntegrator is IDEXIntegrator, ReentrancyGuard, Ownable {
     function emergencyETHRecovery(address payable to, uint256 amount) external onlyOwner {
         require(to != address(0), "Invalid recipient");
         require(address(this).balance >= amount, "Insufficient balance");
-        
+
         to.transfer(amount);
     }
 

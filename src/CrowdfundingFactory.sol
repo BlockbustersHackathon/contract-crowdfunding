@@ -23,45 +23,42 @@ contract CrowdfundingFactory is ICrowdfundingFactory, Ownable, ReentrancyGuard {
     Treasury public immutable treasury;
     PricingCurve public immutable pricingCurve;
     DEXIntegrator public immutable dexIntegrator;
-    
+
     // Campaign registry
     mapping(uint256 => address) public campaigns;
     mapping(address => uint256[]) public creatorCampaigns;
     mapping(address => uint256[]) public contributorCampaigns;
-    
+
     // Token registry
     mapping(address => address) public tokenToCampaign;
     mapping(string => bool) public tokenSymbolUsed;
-    
+
     // Platform settings
     mapping(address => bool) public approvedPaymentTokens;
     mapping(address => bool) public verifiedCreators;
     mapping(address => uint256) public creatorReputation;
-    
+
     // Fee management
     mapping(address => uint256) public accumulatedFees;
     uint256 public defaultPlatformFeeBps = 250; // 2.5%
     address public feeRecipient;
-    
+
     // Access control
     mapping(address => bool) public admins;
     mapping(address => bool) public pausers;
     bool public factoryPaused;
-    
+
     // Statistics
     uint256 public totalCampaigns;
     uint256 public totalRaisedPlatform;
     uint256 public totalTokensCreated;
-    
+
     // Campaign creation fee
     uint256 public campaignCreationFee = 0.01 ether;
-    
+
     // Events
     event CampaignCreated(
-        uint256 indexed campaignId,
-        address indexed creator,
-        address indexed campaignContract,
-        address tokenContract
+        uint256 indexed campaignId, address indexed creator, address indexed campaignContract, address tokenContract
     );
     event FactoryPaused();
     event FactoryUnpaused();
@@ -98,7 +95,7 @@ contract CrowdfundingFactory is ICrowdfundingFactory, Ownable, ReentrancyGuard {
         require(config.hardCap >= config.fundingGoal, "Hard cap < funding goal");
         require(bytes(config.name).length > 0, "Name required");
         require(config.platformFeeBps <= 1000, "Fee too high"); // Max 10%
-        
+
         // Validate payment token
         if (config.paymentToken != address(0)) {
             require(approvedPaymentTokens[config.paymentToken], "Payment token not approved");
@@ -118,26 +115,23 @@ contract CrowdfundingFactory is ICrowdfundingFactory, Ownable, ReentrancyGuard {
         _;
     }
 
-    constructor(
-        address treasury_,
-        address pricingCurve_,
-        address payable dexIntegrator_,
-        address feeRecipient_
-    ) Ownable(msg.sender) {
+    constructor(address treasury_, address pricingCurve_, address payable dexIntegrator_, address feeRecipient_)
+        Ownable(msg.sender)
+    {
         require(treasury_ != address(0), "Invalid treasury");
         require(pricingCurve_ != address(0), "Invalid pricing curve");
         require(dexIntegrator_ != address(0), "Invalid DEX integrator");
         require(feeRecipient_ != address(0), "Invalid fee recipient");
-        
+
         treasury = Treasury(treasury_);
         pricingCurve = PricingCurve(pricingCurve_);
         dexIntegrator = DEXIntegrator(dexIntegrator_);
         feeRecipient = feeRecipient_;
-        
+
         // Add deployer as admin
         admins[msg.sender] = true;
         pausers[msg.sender] = true;
-        
+
         // Approve ETH as payment method (address(0))
         approvedPaymentTokens[address(0)] = true;
     }
@@ -154,27 +148,32 @@ contract CrowdfundingFactory is ICrowdfundingFactory, Ownable, ReentrancyGuard {
         CampaignConfig calldata campaignConfig,
         TokenConfig calldata tokenConfig,
         ContributionTier[] calldata tiers
-    ) external payable override nonReentrant notPaused 
-      validCampaignConfig(campaignConfig)
-      validTokenConfig(tokenConfig)
-      returns (address campaignAddress, address tokenAddress) {
-        
+    )
+        external
+        payable
+        override
+        nonReentrant
+        notPaused
+        validCampaignConfig(campaignConfig)
+        validTokenConfig(tokenConfig)
+        returns (address campaignAddress, address tokenAddress)
+    {
         // Check campaign creation fee
         require(msg.value >= campaignCreationFee, "Insufficient creation fee");
-        
+
         // Validate tiers
         require(tiers.length > 0, "At least one tier required");
         _validateTiers(tiers);
-        
+
         // Increment campaign counter
         uint256 campaignId = totalCampaigns++;
-        
+
         // Use default platform fee if not specified
         CampaignConfig memory config = campaignConfig;
         if (config.platformFeeBps == 0) {
             config.platformFeeBps = uint16(defaultPlatformFeeBps);
         }
-        
+
         // Deploy campaign contract
         Campaign campaign = new Campaign(
             campaignId,
@@ -186,26 +185,26 @@ contract CrowdfundingFactory is ICrowdfundingFactory, Ownable, ReentrancyGuard {
             address(treasury),
             address(dexIntegrator)
         );
-        
+
         campaignAddress = address(campaign);
         tokenAddress = address(campaign.campaignToken());
-        
+
         // Register campaign
         campaigns[campaignId] = campaignAddress;
         creatorCampaigns[config.creator].push(campaignId);
         tokenToCampaign[tokenAddress] = campaignAddress;
         tokenSymbolUsed[tokenConfig.symbol] = true;
-        
+
         // Update statistics
         totalTokensCreated++;
-        
+
         // Send creation fee to fee recipient
         if (msg.value > 0) {
             payable(feeRecipient).transfer(msg.value);
         }
-        
+
         emit CampaignCreated(campaignId, config.creator, campaignAddress, tokenAddress);
-        
+
         return (campaignAddress, tokenAddress);
     }
 
@@ -231,10 +230,10 @@ contract CrowdfundingFactory is ICrowdfundingFactory, Ownable, ReentrancyGuard {
      */
     function updatePlatformFee(uint16 newFeeBps) external override onlyAdmin {
         require(newFeeBps <= 1000, "Fee too high"); // Max 10%
-        
+
         uint256 oldFee = defaultPlatformFeeBps;
         defaultPlatformFeeBps = newFeeBps;
-        
+
         emit PlatformFeeUpdated(oldFee, newFeeBps);
     }
 
@@ -244,18 +243,18 @@ contract CrowdfundingFactory is ICrowdfundingFactory, Ownable, ReentrancyGuard {
      */
     function withdrawPlatformFees(address token) external override {
         require(msg.sender == feeRecipient, "Only fee recipient");
-        
+
         if (token == address(0)) {
             // Withdraw ETH fees
             uint256 balance = address(this).balance;
             require(balance > 0, "No ETH fees to withdraw");
-            
+
             payable(feeRecipient).transfer(balance);
         } else {
             // Withdraw ERC20 fees
             uint256 balance = IERC20(token).balanceOf(address(this));
             require(balance > 0, "No token fees to withdraw");
-            
+
             IERC20(token).safeTransfer(feeRecipient, balance);
         }
     }
@@ -266,10 +265,10 @@ contract CrowdfundingFactory is ICrowdfundingFactory, Ownable, ReentrancyGuard {
      */
     function verifyCreator(address creator) external override onlyAdmin {
         require(creator != address(0), "Invalid creator address");
-        
+
         verifiedCreators[creator] = true;
         creatorReputation[creator] += 100; // Boost reputation
-        
+
         emit CreatorVerified(creator);
     }
 
@@ -279,9 +278,9 @@ contract CrowdfundingFactory is ICrowdfundingFactory, Ownable, ReentrancyGuard {
      */
     function unverifyCreator(address creator) external onlyAdmin {
         require(creator != address(0), "Invalid creator address");
-        
+
         verifiedCreators[creator] = false;
-        
+
         emit CreatorUnverified(creator);
     }
 
@@ -291,9 +290,9 @@ contract CrowdfundingFactory is ICrowdfundingFactory, Ownable, ReentrancyGuard {
      */
     function approvePaymentToken(address token) external override onlyAdmin {
         require(token != address(0), "Cannot approve zero address");
-        
+
         approvedPaymentTokens[token] = true;
-        
+
         emit PaymentTokenApproved(token);
     }
 
@@ -303,9 +302,9 @@ contract CrowdfundingFactory is ICrowdfundingFactory, Ownable, ReentrancyGuard {
      */
     function removePaymentToken(address token) external onlyAdmin {
         require(token != address(0), "Cannot remove ETH");
-        
+
         approvedPaymentTokens[token] = false;
-        
+
         emit PaymentTokenRemoved(token);
     }
 
@@ -324,13 +323,18 @@ contract CrowdfundingFactory is ICrowdfundingFactory, Ownable, ReentrancyGuard {
      * @return campaignAddress Address of the campaign contract
      * @return tokenAddress Address of the campaign token
      */
-    function getCampaignDetails(uint256 campaignId) external view override returns (address campaignAddress, address tokenAddress) {
+    function getCampaignDetails(uint256 campaignId)
+        external
+        view
+        override
+        returns (address campaignAddress, address tokenAddress)
+    {
         campaignAddress = campaigns[campaignId];
         require(campaignAddress != address(0), "Campaign not found");
-        
+
         Campaign campaign = Campaign(payable(campaignAddress));
         tokenAddress = address(campaign.campaignToken());
-        
+
         return (campaignAddress, tokenAddress);
     }
 
@@ -350,10 +354,10 @@ contract CrowdfundingFactory is ICrowdfundingFactory, Ownable, ReentrancyGuard {
     function addAdmin(address admin) external onlyOwner {
         require(admin != address(0), "Invalid admin address");
         require(!admins[admin], "Already admin");
-        
+
         admins[admin] = true;
         pausers[admin] = true; // Admins can also pause
-        
+
         emit AdminAdded(admin);
     }
 
@@ -365,10 +369,10 @@ contract CrowdfundingFactory is ICrowdfundingFactory, Ownable, ReentrancyGuard {
         require(admin != address(0), "Invalid admin address");
         require(admins[admin], "Not an admin");
         require(admin != owner(), "Cannot remove owner");
-        
+
         admins[admin] = false;
         pausers[admin] = false;
-        
+
         emit AdminRemoved(admin);
     }
 
@@ -379,7 +383,7 @@ contract CrowdfundingFactory is ICrowdfundingFactory, Ownable, ReentrancyGuard {
     function updateCampaignCreationFee(uint256 newFee) external onlyAdmin {
         uint256 oldFee = campaignCreationFee;
         campaignCreationFee = newFee;
-        
+
         emit CampaignCreationFeeUpdated(oldFee, newFee);
     }
 
@@ -389,10 +393,10 @@ contract CrowdfundingFactory is ICrowdfundingFactory, Ownable, ReentrancyGuard {
      */
     function updateFeeRecipient(address newRecipient) external onlyOwner {
         require(newRecipient != address(0), "Invalid recipient");
-        
+
         address oldRecipient = feeRecipient;
         feeRecipient = newRecipient;
-        
+
         emit FeeRecipientUpdated(oldRecipient, newRecipient);
     }
 
@@ -402,11 +406,11 @@ contract CrowdfundingFactory is ICrowdfundingFactory, Ownable, ReentrancyGuard {
      * @return _totalRaisedPlatform Total amount raised across all campaigns
      * @return _totalTokensCreated Total number of tokens created
      */
-    function getPlatformStats() external view returns (
-        uint256 _totalCampaigns,
-        uint256 _totalRaisedPlatform,
-        uint256 _totalTokensCreated
-    ) {
+    function getPlatformStats()
+        external
+        view
+        returns (uint256 _totalCampaigns, uint256 _totalRaisedPlatform, uint256 _totalTokensCreated)
+    {
         return (totalCampaigns, totalRaisedPlatform, totalTokensCreated);
     }
 
@@ -416,13 +420,17 @@ contract CrowdfundingFactory is ICrowdfundingFactory, Ownable, ReentrancyGuard {
      * @return campaignId Campaign ID
      * @return tokenAddress Token contract address
      */
-    function getCampaignInfo(address campaignAddress) external view returns (uint256 campaignId, address tokenAddress) {
+    function getCampaignInfo(address campaignAddress)
+        external
+        view
+        returns (uint256 campaignId, address tokenAddress)
+    {
         require(campaignAddress != address(0), "Invalid campaign address");
-        
+
         Campaign campaign = Campaign(payable(campaignAddress));
         campaignId = campaign.campaignId();
         tokenAddress = address(campaign.campaignToken());
-        
+
         return (campaignId, tokenAddress);
     }
 
@@ -454,11 +462,11 @@ contract CrowdfundingFactory is ICrowdfundingFactory, Ownable, ReentrancyGuard {
             require(tiers[i].availableSlots > 0, "Invalid available slots");
             require(tiers[i].bonusMultiplier >= 10000, "Bonus cannot be negative");
             require(tiers[i].bonusMultiplier <= 15000, "Bonus too high"); // Max 50% bonus
-            
+
             // Check tier ordering (higher tiers should have higher minimums)
             if (i > 0) {
                 require(
-                    tiers[i].minContribution >= tiers[i-1].minContribution,
+                    tiers[i].minContribution >= tiers[i - 1].minContribution,
                     "Tiers must be ordered by min contribution"
                 );
             }
@@ -471,14 +479,10 @@ contract CrowdfundingFactory is ICrowdfundingFactory, Ownable, ReentrancyGuard {
      * @param to Address to send tokens to
      * @param amount Amount to recover
      */
-    function emergencyTokenRecovery(
-        address token,
-        address to,
-        uint256 amount
-    ) external onlyOwner {
+    function emergencyTokenRecovery(address token, address to, uint256 amount) external onlyOwner {
         require(token != address(0), "Invalid token address");
         require(to != address(0), "Invalid recipient");
-        
+
         IERC20(token).safeTransfer(to, amount);
     }
 

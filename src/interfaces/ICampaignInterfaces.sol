@@ -9,15 +9,18 @@ interface ICrowdfundingFactory {
         TokenConfig calldata tokenConfig,
         ContributionTier[] calldata tiers
     ) external payable returns (address campaignAddress, address tokenAddress);
-    
+
     function pauseFactory() external;
     function updatePlatformFee(uint16 newFeeBps) external;
     function withdrawPlatformFees(address token) external;
     function verifyCreator(address creator) external;
     function approvePaymentToken(address token) external;
-    
+
     function getCampaignsByCreator(address creator) external view returns (uint256[] memory);
-    function getCampaignDetails(uint256 campaignId) external view returns (address campaignAddress, address tokenAddress);
+    function getCampaignDetails(uint256 campaignId)
+        external
+        view
+        returns (address campaignAddress, address tokenAddress);
     function isAdmin(address account) external view returns (bool);
 }
 
@@ -26,19 +29,34 @@ interface ICampaign {
     function contributeWithToken(uint256 amount) external;
     function batchContribute(uint256[] calldata amounts) external payable;
     function claimRefund() external;
-    
+
     function withdrawFunds() external;
     function launchToken(DEXLaunchConfig calldata dexConfig) external;
     function updateMetadata(string calldata newMetadataURI) external;
     function completeMilestone(uint256 milestoneId, string calldata description) external;
     function emergencyWithdraw() external;
-    
+
     function enableTransfers() external;
     function burnUnallocatedTokens() external;
     function cancelCampaign() external;
     function extendDeadline(uint256 newEndTime) external;
-    
-    function calculateTokenAmount(uint256 contributionAmount) external view returns (uint256 tokenAmount, uint256 tier);
+
+    // Medical verification functions
+    function uploadVerification(string calldata documentHash, string calldata description) external;
+    function updateVerification(string calldata documentHash, string calldata description) external;
+    function getVerificationStatus() external view returns (VerificationStatus);
+
+    // Community voting functions
+    function initiateVote(string calldata reason) external;
+    function castVote(uint256 voteId, VoteType voteType, string calldata reason) external;
+    function executeVote(uint256 voteId) external;
+    function getVoteStatus(uint256 voteId) external view returns (VotingStatus, uint256, uint256);
+    function checkVoteThreshold() external view returns (bool);
+
+    function calculateTokenAmount(uint256 contributionAmount)
+        external
+        view
+        returns (uint256 tokenAmount, uint256 tier);
     function checkGoalReached() external view returns (bool);
     function getContributionHistory(address contributor) external view returns (Contribution[] memory);
     function getCampaignState() external view returns (CampaignState);
@@ -47,12 +65,14 @@ interface ICampaign {
 interface ICampaignToken {
     function mint(address to, uint256 amount) external;
     function burn(uint256 amount) external;
+    function burnFrom(address from, uint256 amount) external;
     function pause() external;
     function unpause() external;
     function snapshot() external returns (uint256);
     function enableTransfers() external;
     function disableTransfers() external;
-    
+    function remainingSupply() external view returns (uint256);
+
     function name() external view returns (string memory);
     function symbol() external view returns (string memory);
     function decimals() external view returns (uint8);
@@ -62,6 +82,8 @@ interface ICampaignToken {
     function allowance(address owner, address spender) external view returns (uint256);
     function approve(address spender, uint256 amount) external returns (bool);
     function transferFrom(address from, address to, uint256 amount) external returns (bool);
+    function getVotingPower(address account) external view returns (uint256);
+    function paused() external view returns (bool);
 }
 
 interface IPricingCurve {
@@ -71,10 +93,13 @@ interface IPricingCurve {
         uint256 fundingGoal,
         ContributionTier[] calldata tiers
     ) external pure returns (uint256 tokenAmount, uint256 tier);
-    
+
     function getCurrentPrice(uint256 totalRaised, uint256 fundingGoal) external pure returns (uint256);
     function getBonusMultiplier(uint256 tier, ContributionTier[] calldata tiers) external pure returns (uint256);
-    function getDiscountedPrice(uint256 basePrice, uint256 timestamp, uint256 startTime) external pure returns (uint256);
+    function getDiscountedPrice(uint256 basePrice, uint256 timestamp, uint256 startTime)
+        external
+        pure
+        returns (uint256);
 }
 
 interface ITreasury {
@@ -85,7 +110,7 @@ interface ITreasury {
     function refund(uint256 campaignId, address to, uint256 amount) external;
     function refundToken(uint256 campaignId, address token, address to, uint256 amount) external;
     function emergencyWithdraw(uint256 campaignId, address to) external;
-    
+
     function getBalance(uint256 campaignId) external view returns (uint256);
     function getTokenBalance(uint256 campaignId, address token) external view returns (uint256);
     function collectPlatformFee(uint256 campaignId, uint256 feeAmount) external;
@@ -94,19 +119,21 @@ interface ITreasury {
 
 interface IDEXIntegrator {
     function createUniswapPair(address token) external returns (address pair);
-    function addInitialLiquidity(
-        address token,
-        uint256 tokenAmount,
-        uint256 ethAmount,
-        address to
-    ) external payable returns (uint256 amountToken, uint256 amountETH, uint256 liquidity);
-    
-    function removeLiquidity(
-        address token,
-        uint256 liquidity,
-        address to
-    ) external returns (uint256 amountToken, uint256 amountETH);
-    
-    function estimateRequiredETH(address token, uint256 tokenAmount, uint256 desiredPrice) external view returns (uint256);
-    function getPoolInfo(address pair) external view returns (uint256 reserve0, uint256 reserve1, uint256 totalSupply);
+    function addInitialLiquidity(address token, uint256 tokenAmount, uint256 ethAmount, address to)
+        external
+        payable
+        returns (uint256 amountToken, uint256 amountETH, uint256 liquidity);
+
+    function removeLiquidity(address token, uint256 liquidity, address to)
+        external
+        returns (uint256 amountToken, uint256 amountETH);
+
+    function estimateRequiredETH(address token, uint256 tokenAmount, uint256 desiredPrice)
+        external
+        view
+        returns (uint256);
+    function getPoolInfo(address pair)
+        external
+        view
+        returns (uint256 reserve0, uint256 reserve1, uint256 totalSupply);
 }

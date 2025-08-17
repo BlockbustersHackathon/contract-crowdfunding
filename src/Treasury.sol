@@ -16,19 +16,19 @@ contract Treasury is ITreasury, ReentrancyGuard, Ownable {
 
     // Factory contract that manages campaigns
     address public immutable factory;
-    
+
     // Campaign balances for ETH
     mapping(uint256 => uint256) public campaignBalances;
-    
+
     // Campaign balances for ERC20 tokens: campaignId => token => balance
     mapping(uint256 => mapping(address => uint256)) public campaignTokenBalances;
-    
+
     // Emergency pause state
     bool public paused;
-    
+
     // Platform fee recipient
     address public feeRecipient;
-    
+
     // Events
     event Deposited(uint256 indexed campaignId, uint256 amount);
     event TokenDeposited(uint256 indexed campaignId, address indexed token, uint256 amount);
@@ -47,7 +47,7 @@ contract Treasury is ITreasury, ReentrancyGuard, Ownable {
     }
 
     modifier onlyCampaign(uint256 campaignId) {
-        (address campaignAddress, ) = ICrowdfundingFactory(factory).getCampaignDetails(campaignId);
+        (address campaignAddress,) = ICrowdfundingFactory(factory).getCampaignDetails(campaignId);
         require(msg.sender == campaignAddress, "Only campaign contract");
         _;
     }
@@ -60,7 +60,7 @@ contract Treasury is ITreasury, ReentrancyGuard, Ownable {
     constructor(address factory_, address feeRecipient_) Ownable(msg.sender) {
         require(factory_ != address(0), "Invalid factory address");
         require(feeRecipient_ != address(0), "Invalid fee recipient");
-        
+
         factory = factory_;
         feeRecipient = feeRecipient_;
     }
@@ -71,9 +71,9 @@ contract Treasury is ITreasury, ReentrancyGuard, Ownable {
      */
     function deposit(uint256 campaignId) external payable override onlyCampaign(campaignId) notPaused {
         require(msg.value > 0, "Deposit amount must be positive");
-        
+
         campaignBalances[campaignId] += msg.value;
-        
+
         emit Deposited(campaignId, msg.value);
     }
 
@@ -83,19 +83,20 @@ contract Treasury is ITreasury, ReentrancyGuard, Ownable {
      * @param token Address of the ERC20 token
      * @param amount Amount of tokens to deposit
      */
-    function depositToken(
-        uint256 campaignId,
-        address token,
-        uint256 amount
-    ) external override onlyCampaign(campaignId) notPaused {
+    function depositToken(uint256 campaignId, address token, uint256 amount)
+        external
+        override
+        onlyCampaign(campaignId)
+        notPaused
+    {
         require(token != address(0), "Invalid token address");
         require(amount > 0, "Deposit amount must be positive");
-        
+
         // Transfer tokens from campaign to treasury
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
-        
+
         campaignTokenBalances[campaignId][token] += amount;
-        
+
         emit TokenDeposited(campaignId, token, amount);
     }
 
@@ -105,20 +106,22 @@ contract Treasury is ITreasury, ReentrancyGuard, Ownable {
      * @param to Address to withdraw to
      * @param amount Amount to withdraw
      */
-    function withdraw(
-        uint256 campaignId,
-        address to,
-        uint256 amount
-    ) external override onlyCampaign(campaignId) nonReentrant notPaused {
+    function withdraw(uint256 campaignId, address to, uint256 amount)
+        external
+        override
+        onlyCampaign(campaignId)
+        nonReentrant
+        notPaused
+    {
         require(to != address(0), "Invalid recipient address");
         require(amount > 0, "Withdrawal amount must be positive");
         require(campaignBalances[campaignId] >= amount, "Insufficient balance");
-        
+
         campaignBalances[campaignId] -= amount;
-        
-        (bool success, ) = payable(to).call{value: amount}("");
+
+        (bool success,) = payable(to).call{value: amount}("");
         require(success, "Transfer failed");
-        
+
         emit Withdrawn(campaignId, to, amount);
     }
 
@@ -129,21 +132,22 @@ contract Treasury is ITreasury, ReentrancyGuard, Ownable {
      * @param to Address to withdraw to
      * @param amount Amount to withdraw
      */
-    function withdrawToken(
-        uint256 campaignId,
-        address token,
-        address to,
-        uint256 amount
-    ) external override onlyCampaign(campaignId) nonReentrant notPaused {
+    function withdrawToken(uint256 campaignId, address token, address to, uint256 amount)
+        external
+        override
+        onlyCampaign(campaignId)
+        nonReentrant
+        notPaused
+    {
         require(token != address(0), "Invalid token address");
         require(to != address(0), "Invalid recipient address");
         require(amount > 0, "Withdrawal amount must be positive");
         require(campaignTokenBalances[campaignId][token] >= amount, "Insufficient token balance");
-        
+
         campaignTokenBalances[campaignId][token] -= amount;
-        
+
         IERC20(token).safeTransfer(to, amount);
-        
+
         emit TokenWithdrawn(campaignId, token, to, amount);
     }
 
@@ -153,20 +157,22 @@ contract Treasury is ITreasury, ReentrancyGuard, Ownable {
      * @param to Address to refund to
      * @param amount Amount to refund
      */
-    function refund(
-        uint256 campaignId,
-        address to,
-        uint256 amount
-    ) external override onlyCampaign(campaignId) nonReentrant notPaused {
+    function refund(uint256 campaignId, address to, uint256 amount)
+        external
+        override
+        onlyCampaign(campaignId)
+        nonReentrant
+        notPaused
+    {
         require(to != address(0), "Invalid recipient address");
         require(amount > 0, "Refund amount must be positive");
         require(campaignBalances[campaignId] >= amount, "Insufficient balance");
-        
+
         campaignBalances[campaignId] -= amount;
-        
-        (bool success, ) = payable(to).call{value: amount}("");
+
+        (bool success,) = payable(to).call{value: amount}("");
         require(success, "Refund failed");
-        
+
         emit Refunded(campaignId, to, amount);
     }
 
@@ -177,21 +183,22 @@ contract Treasury is ITreasury, ReentrancyGuard, Ownable {
      * @param to Address to refund to
      * @param amount Amount to refund
      */
-    function refundToken(
-        uint256 campaignId,
-        address token,
-        address to,
-        uint256 amount
-    ) external override onlyCampaign(campaignId) nonReentrant notPaused {
+    function refundToken(uint256 campaignId, address token, address to, uint256 amount)
+        external
+        override
+        onlyCampaign(campaignId)
+        nonReentrant
+        notPaused
+    {
         require(token != address(0), "Invalid token address");
         require(to != address(0), "Invalid recipient address");
         require(amount > 0, "Refund amount must be positive");
         require(campaignTokenBalances[campaignId][token] >= amount, "Insufficient token balance");
-        
+
         campaignTokenBalances[campaignId][token] -= amount;
-        
+
         IERC20(token).safeTransfer(to, amount);
-        
+
         emit TokenRefunded(campaignId, token, to, amount);
     }
 
@@ -200,19 +207,16 @@ contract Treasury is ITreasury, ReentrancyGuard, Ownable {
      * @param campaignId ID of the campaign
      * @param to Address to withdraw to
      */
-    function emergencyWithdraw(
-        uint256 campaignId,
-        address to
-    ) external override onlyOwner nonReentrant {
+    function emergencyWithdraw(uint256 campaignId, address to) external override onlyOwner nonReentrant {
         require(to != address(0), "Invalid recipient address");
-        
+
         uint256 balance = campaignBalances[campaignId];
         if (balance > 0) {
             campaignBalances[campaignId] = 0;
-            
-            (bool success, ) = payable(to).call{value: balance}("");
+
+            (bool success,) = payable(to).call{value: balance}("");
             require(success, "Emergency withdrawal failed");
-            
+
             emit EmergencyWithdrawn(campaignId, to, balance);
         }
     }
@@ -223,20 +227,16 @@ contract Treasury is ITreasury, ReentrancyGuard, Ownable {
      * @param token Address of the ERC20 token
      * @param to Address to withdraw to
      */
-    function emergencyTokenWithdraw(
-        uint256 campaignId,
-        address token,
-        address to
-    ) external onlyOwner nonReentrant {
+    function emergencyTokenWithdraw(uint256 campaignId, address token, address to) external onlyOwner nonReentrant {
         require(token != address(0), "Invalid token address");
         require(to != address(0), "Invalid recipient address");
-        
+
         uint256 balance = campaignTokenBalances[campaignId][token];
         if (balance > 0) {
             campaignTokenBalances[campaignId][token] = 0;
-            
+
             IERC20(token).safeTransfer(to, balance);
-            
+
             emit TokenWithdrawn(campaignId, token, to, balance);
         }
     }
@@ -282,10 +282,10 @@ contract Treasury is ITreasury, ReentrancyGuard, Ownable {
      */
     function updateFeeRecipient(address newFeeRecipient) external onlyOwner {
         require(newFeeRecipient != address(0), "Invalid fee recipient");
-        
+
         address oldRecipient = feeRecipient;
         feeRecipient = newFeeRecipient;
-        
+
         emit FeeRecipientUpdated(oldRecipient, newFeeRecipient);
     }
 
@@ -297,10 +297,10 @@ contract Treasury is ITreasury, ReentrancyGuard, Ownable {
     function collectPlatformFee(uint256 campaignId, uint256 feeAmount) external onlyCampaign(campaignId) nonReentrant {
         require(feeAmount > 0, "Fee amount must be positive");
         require(campaignBalances[campaignId] >= feeAmount, "Insufficient balance");
-        
+
         campaignBalances[campaignId] -= feeAmount;
-        
-        (bool success, ) = payable(feeRecipient).call{value: feeAmount}("");
+
+        (bool success,) = payable(feeRecipient).call{value: feeAmount}("");
         require(success, "Fee transfer failed");
     }
 
@@ -310,17 +310,17 @@ contract Treasury is ITreasury, ReentrancyGuard, Ownable {
      * @param token Address of the ERC20 token
      * @param feeAmount Amount of fees to collect
      */
-    function collectPlatformTokenFee(
-        uint256 campaignId,
-        address token,
-        uint256 feeAmount
-    ) external onlyCampaign(campaignId) nonReentrant {
+    function collectPlatformTokenFee(uint256 campaignId, address token, uint256 feeAmount)
+        external
+        onlyCampaign(campaignId)
+        nonReentrant
+    {
         require(token != address(0), "Invalid token address");
         require(feeAmount > 0, "Fee amount must be positive");
         require(campaignTokenBalances[campaignId][token] >= feeAmount, "Insufficient token balance");
-        
+
         campaignTokenBalances[campaignId][token] -= feeAmount;
-        
+
         IERC20(token).safeTransfer(feeRecipient, feeAmount);
     }
 
