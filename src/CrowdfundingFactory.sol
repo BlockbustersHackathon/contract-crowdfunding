@@ -14,6 +14,7 @@ contract CrowdfundingFactory is ICrowdfundingFactory, ICampaignEvents, Ownable, 
     TokenFactory public immutable tokenFactory;
     PricingCurve public immutable pricingCurve;
     DEXIntegrator public immutable dexIntegrator;
+    address public immutable usdcToken;
 
     mapping(uint256 => Campaign) public campaigns;
     mapping(address => uint256[]) public creatorCampaigns;
@@ -23,8 +24,8 @@ contract CrowdfundingFactory is ICrowdfundingFactory, ICampaignEvents, Ownable, 
     uint256 public platformFeePercentage = 250; // 2.5%
     address public feeRecipient;
 
-    uint256 public constant MIN_FUNDING_GOAL = 0.1 ether;
-    uint256 public constant MAX_FUNDING_GOAL = 10000 ether;
+    uint256 public constant MIN_FUNDING_GOAL = 100e6; // 100 USDC
+    uint256 public constant MAX_FUNDING_GOAL = 10000000e6; // 10M USDC
     uint256 public constant MIN_DURATION = 1 days;
     uint256 public constant MAX_DURATION = 180 days;
     uint256 public constant MAX_PLATFORM_FEE = 1000; // 10%
@@ -52,17 +53,20 @@ contract CrowdfundingFactory is ICrowdfundingFactory, ICampaignEvents, Ownable, 
         address _tokenFactory,
         address _pricingCurve,
         address _dexIntegrator,
+        address _usdcToken,
         address _feeRecipient,
         address _owner
     ) Ownable(_owner) {
         require(_tokenFactory != address(0), "CrowdfundingFactory: Invalid token factory");
         require(_pricingCurve != address(0), "CrowdfundingFactory: Invalid pricing curve");
         require(_dexIntegrator != address(0), "CrowdfundingFactory: Invalid DEX integrator");
+        require(_usdcToken != address(0), "CrowdfundingFactory: Invalid USDC token");
         require(_feeRecipient != address(0), "CrowdfundingFactory: Invalid fee recipient");
 
         tokenFactory = TokenFactory(_tokenFactory);
         pricingCurve = PricingCurve(_pricingCurve);
         dexIntegrator = DEXIntegrator(_dexIntegrator);
+        usdcToken = _usdcToken;
         feeRecipient = _feeRecipient;
     }
 
@@ -98,6 +102,7 @@ contract CrowdfundingFactory is ICrowdfundingFactory, ICampaignEvents, Ownable, 
             address(0), // Will be updated after token creation
             address(pricingCurve),
             address(dexIntegrator),
+            usdcToken,
             address(this)
         );
 
@@ -150,12 +155,8 @@ contract CrowdfundingFactory is ICrowdfundingFactory, ICampaignEvents, Ownable, 
         emit FeeRecipientUpdated(oldRecipient, newFeeRecipient);
     }
 
-    function withdrawPlatformFees() external onlyOwner {
-        uint256 balance = address(this).balance;
-        require(balance > 0, "CrowdfundingFactory: No fees to withdraw");
-
-        payable(feeRecipient).transfer(balance);
-    }
+    // Platform fees would need to be implemented differently with USDC
+    // This would require collecting USDC fees from campaigns
 
     // Emergency functions
     function pauseCampaign(uint256 campaignId) external view onlyOwner {
@@ -163,12 +164,7 @@ contract CrowdfundingFactory is ICrowdfundingFactory, ICampaignEvents, Ownable, 
         // Implementation would depend on adding pause functionality to Campaign contract
     }
 
-    function emergencyWithdraw() external onlyOwner {
-        // Emergency function for critical situations
-        payable(owner()).transfer(address(this).balance);
-    }
+    // Emergency functions would need to handle USDC instead of ETH
 
-    receive() external payable {
-        // Accept ETH for platform fees
-    }
+    // Removed receive function since we don't accept ETH anymore
 }

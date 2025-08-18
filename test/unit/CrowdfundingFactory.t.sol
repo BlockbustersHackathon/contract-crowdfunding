@@ -34,7 +34,7 @@ contract CrowdfundingFactoryTest is BaseTest {
         vm.expectRevert("CrowdfundingFactory: Invalid funding goal");
         factory.createCampaign(
             "ipfs://test",
-            0.05 ether, // Below minimum
+            50e6, // Below minimum (100 USDC)
             CAMPAIGN_DURATION,
             CREATOR_RESERVE,
             LIQUIDITY_PERCENTAGE,
@@ -47,7 +47,7 @@ contract CrowdfundingFactoryTest is BaseTest {
         vm.expectRevert("CrowdfundingFactory: Invalid funding goal");
         factory.createCampaign(
             "ipfs://test",
-            15000 ether, // Above maximum
+            15000000e6, // Above maximum (10M USDC)
             CAMPAIGN_DURATION,
             CREATOR_RESERVE,
             LIQUIDITY_PERCENTAGE,

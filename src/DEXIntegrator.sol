@@ -6,14 +6,16 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./interfaces/ICampaignInterfaces.sol";
 
 interface IUniswapV2Router02 {
-    function addLiquidityETH(
-        address token,
-        uint256 amountTokenDesired,
-        uint256 amountTokenMin,
-        uint256 amountETHMin,
+    function addLiquidity(
+        address tokenA,
+        address tokenB,
+        uint256 amountADesired,
+        uint256 amountBDesired,
+        uint256 amountAMin,
+        uint256 amountBMin,
         address to,
         uint256 deadline
-    ) external payable returns (uint256 amountToken, uint256 amountETH, uint256 liquidity);
+    ) external returns (uint256 amountA, uint256 amountB, uint256 liquidity);
 
     function getAmountsOut(uint256 amountIn, address[] calldata path)
         external
@@ -41,7 +43,12 @@ contract DEXIntegrator is IDEXIntegrator {
     IUniswapV2Factory public immutable uniswapFactory;
 
     event LiquidityAdded(
-        address indexed token, uint256 tokenAmount, uint256 ethAmount, uint256 liquidity, address indexed pair
+        address indexed tokenA,
+        address indexed tokenB,
+        uint256 tokenAmount,
+        uint256 usdcAmount,
+        uint256 liquidity,
+        address indexed pair
     );
 
     constructor(address _uniswapRouter, address _uniswapFactory) {
@@ -52,71 +59,74 @@ contract DEXIntegrator is IDEXIntegrator {
         uniswapFactory = IUniswapV2Factory(_uniswapFactory);
     }
 
-    function addLiquidity(address token, uint256 tokenAmount, uint256 ethAmount)
+    function addLiquidity(address tokenA, uint256 tokenAmount, address tokenB, uint256 usdcAmount)
         external
-        payable
-        returns (uint256 amountToken, uint256 amountETH, uint256 liquidity)
+        returns (uint256 amountToken, uint256 amountUSDC, uint256 liquidity)
     {
-        require(token != address(0), "DEXIntegrator: Invalid token address");
+        require(tokenA != address(0), "DEXIntegrator: Invalid tokenA address");
+        require(tokenB != address(0), "DEXIntegrator: Invalid tokenB address");
         require(tokenAmount > 0, "DEXIntegrator: Token amount must be greater than zero");
-        require(ethAmount > 0, "DEXIntegrator: ETH amount must be greater than zero");
-        require(msg.value >= ethAmount, "DEXIntegrator: Insufficient ETH sent");
+        require(usdcAmount > 0, "DEXIntegrator: USDC amount must be greater than zero");
 
-        IERC20(token).safeTransferFrom(msg.sender, address(this), tokenAmount);
-        IERC20(token).approve(address(uniswapRouter), tokenAmount);
+        IERC20(tokenA).safeTransferFrom(msg.sender, address(this), tokenAmount);
+        IERC20(tokenB).safeTransferFrom(msg.sender, address(this), usdcAmount);
+        IERC20(tokenA).approve(address(uniswapRouter), tokenAmount);
+        IERC20(tokenB).approve(address(uniswapRouter), usdcAmount);
 
         uint256 deadline = block.timestamp + 300;
 
-        (amountToken, amountETH, liquidity) = uniswapRouter.addLiquidityETH{value: ethAmount}(
-            token,
+        (amountToken, amountUSDC, liquidity) = uniswapRouter.addLiquidity(
+            tokenA,
+            tokenB,
             tokenAmount,
+            usdcAmount,
             tokenAmount * 95 / 100, // 5% slippage tolerance
-            ethAmount * 95 / 100, // 5% slippage tolerance
+            usdcAmount * 95 / 100, // 5% slippage tolerance
             msg.sender,
             deadline
         );
 
-        if (msg.value > amountETH) {
-            payable(msg.sender).transfer(msg.value - amountETH);
-        }
-
         if (tokenAmount > amountToken) {
-            IERC20(token).safeTransfer(msg.sender, tokenAmount - amountToken);
+            IERC20(tokenA).safeTransfer(msg.sender, tokenAmount - amountToken);
         }
 
-        address pair = uniswapFactory.getPair(token, uniswapRouter.WETH());
+        if (usdcAmount > amountUSDC) {
+            IERC20(tokenB).safeTransfer(msg.sender, usdcAmount - amountUSDC);
+        }
 
-        emit LiquidityAdded(token, amountToken, amountETH, liquidity, pair);
+        address pair = uniswapFactory.getPair(tokenA, tokenB);
+
+        emit LiquidityAdded(tokenA, tokenB, amountToken, amountUSDC, liquidity, pair);
     }
 
-    function getOptimalLiquidityAmounts(address token, uint256 tokenDesired, uint256 ethDesired)
+    function getOptimalLiquidityAmounts(address tokenA, address tokenB, uint256 tokenDesired, uint256 usdcDesired)
         external
         view
-        returns (uint256 tokenAmount, uint256 ethAmount)
+        returns (uint256 tokenAmount, uint256 usdcAmount)
     {
-        address pair = uniswapFactory.getPair(token, uniswapRouter.WETH());
+        address pair = uniswapFactory.getPair(tokenA, tokenB);
 
         if (pair == address(0)) {
-            return (tokenDesired, ethDesired);
+            return (tokenDesired, usdcDesired);
         }
 
         IUniswapV2Pair pairContract = IUniswapV2Pair(pair);
         (uint112 reserve0, uint112 reserve1,) = pairContract.getReserves();
 
         address token0 = pairContract.token0();
-        (uint256 tokenReserve, uint256 ethReserve) =
-            token == token0 ? (uint256(reserve0), uint256(reserve1)) : (uint256(reserve1), uint256(reserve0));
+        (uint256 tokenReserve, uint256 usdcReserve) =
+            tokenA == token0 ? (uint256(reserve0), uint256(reserve1)) : (uint256(reserve1), uint256(reserve0));
 
-        if (tokenReserve == 0 && ethReserve == 0) {
-            return (tokenDesired, ethDesired);
+        if (tokenReserve == 0 && usdcReserve == 0) {
+            return (tokenDesired, usdcDesired);
         }
 
-        uint256 ethAmountOptimal = (tokenDesired * ethReserve) / tokenReserve;
-        if (ethAmountOptimal <= ethDesired) {
-            return (tokenDesired, ethAmountOptimal);
+        uint256 usdcAmountOptimal = (tokenDesired * usdcReserve) / tokenReserve;
+        if (usdcAmountOptimal <= usdcDesired) {
+            return (tokenDesired, usdcAmountOptimal);
         } else {
-            uint256 tokenAmountOptimal = (ethDesired * tokenReserve) / ethReserve;
-            return (tokenAmountOptimal, ethDesired);
+            uint256 tokenAmountOptimal = (usdcDesired * tokenReserve) / usdcReserve;
+            return (tokenAmountOptimal, usdcDesired);
         }
     }
 }

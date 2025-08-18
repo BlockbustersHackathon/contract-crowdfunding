@@ -15,11 +15,13 @@ contract CampaignTest is BaseTest {
 
     // Contribution Tests
     function test_Contribute_Success() public {
-        uint256 contributionAmount = 1 ether;
-        uint256 initialBalance = contributor1.balance;
+        uint256 contributionAmount = 1000e6; // 1000 USDC
+        uint256 initialBalance = usdcToken.balanceOf(contributor1);
 
-        vm.prank(contributor1);
-        campaign.contribute{value: contributionAmount}();
+        vm.startPrank(contributor1);
+        usdcToken.approve(address(campaign), contributionAmount);
+        campaign.contribute(contributionAmount);
+        vm.stopPrank();
 
         // Check contribution recorded
         Contribution memory contrib = campaign.getContribution(contributor1);
@@ -32,16 +34,17 @@ contract CampaignTest is BaseTest {
         assertEq(data.totalRaised, contributionAmount);
 
         // Check contributor balance reduced
-        assertEq(contributor1.balance, initialBalance - contributionAmount);
+        assertEq(usdcToken.balanceOf(contributor1), initialBalance - contributionAmount);
     }
 
     function test_Contribute_MultipleContributions() public {
-        uint256 firstContribution = 1 ether;
-        uint256 secondContribution = 2 ether;
+        uint256 firstContribution = 1000e6; // 1000 USDC
+        uint256 secondContribution = 2000e6; // 2000 USDC
 
         vm.startPrank(contributor1);
-        campaign.contribute{value: firstContribution}();
-        campaign.contribute{value: secondContribution}();
+        usdcToken.approve(address(campaign), firstContribution + secondContribution);
+        campaign.contribute(firstContribution);
+        campaign.contribute(secondContribution);
         vm.stopPrank();
 
         Contribution memory contrib = campaign.getContribution(contributor1);
@@ -52,23 +55,32 @@ contract CampaignTest is BaseTest {
     }
 
     function test_Contribute_BelowMinimum() public {
-        vm.prank(contributor1);
+        uint256 belowMinimum = 0.5e6; // 0.5 USDC (below 1 USDC minimum)
+        vm.startPrank(contributor1);
+        usdcToken.approve(address(campaign), belowMinimum);
         vm.expectRevert("Campaign: Contribution below minimum");
-        campaign.contribute{value: 0.0005 ether}(); // Below MIN_CONTRIBUTION
+        campaign.contribute(belowMinimum);
+        vm.stopPrank();
     }
 
     function test_Contribute_CreatorCannotContribute() public {
-        vm.prank(creator);
+        uint256 amount = 1000e6; // 1000 USDC
+        vm.startPrank(creator);
+        usdcToken.approve(address(campaign), amount);
         vm.expectRevert("Campaign: Creator cannot contribute");
-        campaign.contribute{value: 1 ether}();
+        campaign.contribute(amount);
+        vm.stopPrank();
     }
 
     function test_Contribute_AfterDeadline() public {
         fastForwardToDeadline(campaignId);
 
-        vm.prank(contributor1);
+        uint256 amount = 1000e6; // 1000 USDC
+        vm.startPrank(contributor1);
+        usdcToken.approve(address(campaign), amount);
         vm.expectRevert("Campaign: Campaign expired");
-        campaign.contribute{value: 1 ether}();
+        campaign.contribute(amount);
+        vm.stopPrank();
     }
 
     function test_Contribute_InactiveState() public {
@@ -76,22 +88,31 @@ contract CampaignTest is BaseTest {
         contributeToCompaign(campaignId, contributor1, FUNDING_GOAL);
         campaign.updateCampaignState();
 
-        vm.prank(contributor2);
+        uint256 amount = 1000e6; // 1000 USDC
+        vm.startPrank(contributor2);
+        usdcToken.approve(address(campaign), amount);
         vm.expectRevert("Campaign: Campaign not active");
-        campaign.contribute{value: 1 ether}();
+        campaign.contribute(amount);
+        vm.stopPrank();
     }
 
     function test_EarlyBackerBonus() public {
+        uint256 contributionAmount = 1000e6; // 1000 USDC
+
         // Early contribution should get bonus
-        vm.prank(contributor1);
-        campaign.contribute{value: 1 ether}();
+        vm.startPrank(contributor1);
+        usdcToken.approve(address(campaign), contributionAmount);
+        campaign.contribute(contributionAmount);
+        vm.stopPrank();
         Contribution memory earlyContrib = campaign.getContribution(contributor1);
 
         // Fast forward to later in campaign (past early bird period which is 25%)
         fastForwardTime(CAMPAIGN_DURATION / 3); // 33% through campaign
 
-        vm.prank(contributor2);
-        campaign.contribute{value: 1 ether}();
+        vm.startPrank(contributor2);
+        usdcToken.approve(address(campaign), contributionAmount);
+        campaign.contribute(contributionAmount);
+        vm.stopPrank();
         Contribution memory laterContrib = campaign.getContribution(contributor2);
 
         // Early contributor should have more tokens for same contribution due to early bird bonus
@@ -132,12 +153,12 @@ contract CampaignTest is BaseTest {
         contributeToCompaign(campaignId, contributor1, FUNDING_GOAL);
         campaign.updateCampaignState();
 
-        uint256 initialBalance = creator.balance;
+        uint256 initialBalance = usdcToken.balanceOf(creator);
 
         vm.prank(creator);
         campaign.withdrawFunds();
 
-        assertEq(creator.balance, initialBalance + FUNDING_GOAL);
+        assertEq(usdcToken.balanceOf(creator), initialBalance + FUNDING_GOAL);
         assertCampaignState(campaignId, CampaignState.FundsWithdrawn);
     }
 
@@ -158,7 +179,7 @@ contract CampaignTest is BaseTest {
 
     // Token Claiming Tests
     function test_ClaimTokens_Success() public {
-        uint256 contributionAmount = 1 ether;
+        uint256 contributionAmount = 1000e6; // 1000 USDC
         contributeToCompaign(campaignId, contributor1, contributionAmount);
         contributeToCompaign(campaignId, contributor2, FUNDING_GOAL - contributionAmount);
         campaign.updateCampaignState();
@@ -217,12 +238,12 @@ contract CampaignTest is BaseTest {
         fastForwardToDeadline(strictCampaignId);
         strictCampaign.updateCampaignState();
 
-        uint256 initialBalance = contributor1.balance;
+        uint256 initialBalance = usdcToken.balanceOf(contributor1);
 
         vm.prank(contributor1);
         strictCampaign.refund();
 
-        assertEq(contributor1.balance, initialBalance + contributionAmount);
+        assertEq(usdcToken.balanceOf(contributor1), initialBalance + contributionAmount);
 
         // Check contribution amount reset
         Contribution memory contrib = strictCampaign.getContribution(contributor1);
@@ -287,18 +308,19 @@ contract CampaignTest is BaseTest {
 
     // View Function Tests
     function test_CalculateTokenAllocation() public {
-        uint256 allocation = campaign.calculateTokenAllocation(1 ether);
+        uint256 amount = 1000e6; // 1000 USDC
+        uint256 allocation = campaign.calculateTokenAllocation(amount);
         assertGt(allocation, 0);
 
         // Later in campaign should give less allocation
         fastForwardTime(CAMPAIGN_DURATION / 2);
-        uint256 laterAllocation = campaign.calculateTokenAllocation(1 ether);
+        uint256 laterAllocation = campaign.calculateTokenAllocation(amount);
         assertLt(laterAllocation, allocation);
     }
 
     function test_GetContributors() public {
-        contributeToCompaign(campaignId, contributor1, 1 ether);
-        contributeToCompaign(campaignId, contributor2, 2 ether);
+        contributeToCompaign(campaignId, contributor1, 1000e6); // 1000 USDC
+        contributeToCompaign(campaignId, contributor2, 2000e6); // 2000 USDC
 
         address[] memory contributors = campaign.getContributors();
         assertEq(contributors.length, 2);

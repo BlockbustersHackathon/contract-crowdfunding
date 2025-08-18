@@ -21,7 +21,7 @@ interface ICrowdfundingFactory {
 }
 
 interface ICampaign {
-    function contribute() external payable;
+    function contribute(uint256 amount) external;
     function claimTokens() external;
     function withdrawFunds() external;
     function refund() external;
@@ -42,15 +42,14 @@ interface ICampaignToken {
 }
 
 interface IDEXIntegrator {
-    function addLiquidity(address token, uint256 tokenAmount, uint256 ethAmount)
+    function addLiquidity(address tokenA, uint256 tokenAmount, address tokenB, uint256 usdcAmount)
         external
-        payable
-        returns (uint256 amountToken, uint256 amountETH, uint256 liquidity);
+        returns (uint256 amountToken, uint256 amountUSDC, uint256 liquidity);
 
-    function getOptimalLiquidityAmounts(address token, uint256 tokenDesired, uint256 ethDesired)
+    function getOptimalLiquidityAmounts(address tokenA, address tokenB, uint256 tokenDesired, uint256 usdcDesired)
         external
         view
-        returns (uint256 tokenAmount, uint256 ethAmount);
+        returns (uint256 tokenAmount, uint256 usdcAmount);
 }
 
 interface IPricingCurve {

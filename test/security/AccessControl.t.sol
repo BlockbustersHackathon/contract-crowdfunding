@@ -102,23 +102,8 @@ contract AccessControlTest is BaseTest {
         factory.setFeeRecipient(newRecipient);
     }
 
-    function test_FactoryOwnerOnly_WithdrawPlatformFees() public {
-        // Fund the factory
-        vm.deal(address(factory), 1 ether);
-
-        // Non-owner attempts should fail
-        vm.prank(creator);
-        vm.expectRevert();
-        factory.withdrawPlatformFees();
-
-        vm.prank(contributor1);
-        vm.expectRevert();
-        factory.withdrawPlatformFees();
-
-        // Owner should succeed
-        vm.prank(deployer);
-        factory.withdrawPlatformFees();
-    }
+    // Note: withdrawPlatformFees function was removed in USDC-only implementation
+    // Platform fees would need to be implemented differently with USDC
 
     function test_CampaignTokenMinting_OnlyCampaign() public {
         CampaignData memory data = campaign.getCampaignDetails();
@@ -138,8 +123,8 @@ contract AccessControlTest is BaseTest {
         token.mint(contributor1, 1000 * 10 ** 18);
 
         // Campaign contract should succeed
-        contributeToCompaign(campaignId, contributor1, 1 ether);
-        contributeToCompaign(campaignId, contributor2, FUNDING_GOAL - 1 ether);
+        contributeToCompaign(campaignId, contributor1, 1000e6); // 1000 USDC
+        contributeToCompaign(campaignId, contributor2, FUNDING_GOAL - 1000e6);
         campaign.updateCampaignState();
 
         vm.prank(contributor1);
@@ -188,7 +173,7 @@ contract AccessControlTest is BaseTest {
     }
 
     function test_ContributorRights_ClaimTokens() public {
-        uint256 contribution = 2 ether;
+        uint256 contribution = 2000e6; // 2000 USDC
         contributeToCompaign(campaignId, contributor1, contribution);
         contributeToCompaign(campaignId, contributor2, FUNDING_GOAL - contribution);
         campaign.updateCampaignState();
@@ -214,7 +199,7 @@ contract AccessControlTest is BaseTest {
         uint256 strictCampaignId = createTestCampaignWithGoalRequired();
         Campaign strictCampaign = getCampaign(strictCampaignId);
 
-        uint256 contribution = 2 ether;
+        uint256 contribution = 2000e6; // 2000 USDC
         contributeToCompaign(strictCampaignId, contributor1, contribution);
 
         fastForwardToDeadline(strictCampaignId);
@@ -226,11 +211,11 @@ contract AccessControlTest is BaseTest {
         strictCampaign.refund();
 
         // Contributor1 can refund own contribution
-        uint256 initialBalance = contributor1.balance;
+        uint256 initialBalance = usdcToken.balanceOf(contributor1);
         vm.prank(contributor1);
         strictCampaign.refund();
 
-        assertEq(contributor1.balance, initialBalance + contribution);
+        assertEq(usdcToken.balanceOf(contributor1), initialBalance + contribution);
     }
 
     function test_PublicFunctions_AnyoneCanCall() public {
@@ -242,7 +227,7 @@ contract AccessControlTest is BaseTest {
         campaign.getCampaignDetails();
 
         vm.prank(contributor2);
-        campaign.calculateTokenAllocation(1 ether);
+        campaign.calculateTokenAllocation(1000e6); // 1000 USDC
 
         vm.prank(deployer);
         campaign.getContributors();
@@ -265,23 +250,6 @@ contract AccessControlTest is BaseTest {
         factory.setPlatformFee(500);
     }
 
-    function test_EmergencyFunctions_OnlyOwner() public {
-        // Emergency withdraw should only be callable by owner
-        vm.deal(address(factory), 1 ether);
-
-        vm.prank(creator);
-        vm.expectRevert();
-        factory.emergencyWithdraw();
-
-        vm.prank(contributor1);
-        vm.expectRevert();
-        factory.emergencyWithdraw();
-
-        uint256 ownerInitialBalance = deployer.balance;
-
-        vm.prank(deployer);
-        factory.emergencyWithdraw();
-
-        assertEq(deployer.balance, ownerInitialBalance + 1 ether);
-    }
+    // Note: emergencyWithdraw function was removed in USDC-only implementation
+    // Emergency functions would need to handle USDC instead of ETH
 }

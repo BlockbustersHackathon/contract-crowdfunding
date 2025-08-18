@@ -18,12 +18,13 @@ contract Campaign is ICampaign, ICampaignEvents, ReentrancyGuard, Ownable {
     CampaignToken public campaignToken;
     PricingCurve public immutable pricingCurve;
     DEXIntegrator public immutable dexIntegrator;
+    IERC20 public immutable usdcToken;
 
     mapping(address => Contribution) public contributions;
     mapping(address => bool) public hasContributed;
     address[] public contributors;
 
-    uint256 public constant MIN_CONTRIBUTION = 0.001 ether;
+    uint256 public constant MIN_CONTRIBUTION = 1e6; // 1 USDC (6 decimals)
     uint256 public constant MAX_CREATOR_RESERVE = 50; // 50% max
     uint256 public constant MAX_LIQUIDITY_PERCENTAGE = 80; // 80% max
     uint256 public constant EXTENSION_LIMIT = 30 days;
@@ -54,6 +55,7 @@ contract Campaign is ICampaign, ICampaignEvents, ReentrancyGuard, Ownable {
         address _tokenAddress,
         address _pricingCurve,
         address _dexIntegrator,
+        address _usdcToken,
         address _owner
     ) Ownable(_owner) {
         require(_creator != address(0), "Campaign: Invalid creator address");
@@ -63,6 +65,7 @@ contract Campaign is ICampaign, ICampaignEvents, ReentrancyGuard, Ownable {
         require(_liquidityPercentage <= MAX_LIQUIDITY_PERCENTAGE, "Campaign: Liquidity percentage too high");
         require(_pricingCurve != address(0), "Campaign: Invalid pricing curve address");
         require(_dexIntegrator != address(0), "Campaign: Invalid DEX integrator address");
+        require(_usdcToken != address(0), "Campaign: Invalid USDC token address");
 
         campaignData = CampaignData({
             creator: _creator,
@@ -81,18 +84,21 @@ contract Campaign is ICampaign, ICampaignEvents, ReentrancyGuard, Ownable {
 
         pricingCurve = PricingCurve(_pricingCurve);
         dexIntegrator = DEXIntegrator(_dexIntegrator);
+        usdcToken = IERC20(_usdcToken);
     }
 
-    function contribute() external payable nonReentrant onlyActiveState campaignNotExpired {
-        require(msg.value >= MIN_CONTRIBUTION, "Campaign: Contribution below minimum");
+    function contribute(uint256 amount) external nonReentrant onlyActiveState campaignNotExpired {
+        require(amount >= MIN_CONTRIBUTION, "Campaign: Contribution below minimum");
         require(msg.sender != campaignData.creator, "Campaign: Creator cannot contribute");
 
         uint256 timeRemaining = campaignData.deadline > block.timestamp ? campaignData.deadline - block.timestamp : 0;
         uint256 totalDuration = campaignData.deadline - campaignData.createdAt;
 
         uint256 tokenAllocation = pricingCurve.calculateTokenAllocation(
-            msg.value, campaignData.totalRaised, campaignData.fundingGoal, timeRemaining, totalDuration
+            amount, campaignData.totalRaised, campaignData.fundingGoal, timeRemaining, totalDuration
         );
+
+        usdcToken.safeTransferFrom(msg.sender, address(this), amount);
 
         if (!hasContributed[msg.sender]) {
             contributors.push(msg.sender);
@@ -100,13 +106,13 @@ contract Campaign is ICampaign, ICampaignEvents, ReentrancyGuard, Ownable {
         }
 
         contributions[msg.sender].contributor = msg.sender;
-        contributions[msg.sender].amount += msg.value;
+        contributions[msg.sender].amount += amount;
         contributions[msg.sender].timestamp = block.timestamp;
         contributions[msg.sender].tokenAllocation += tokenAllocation;
 
-        campaignData.totalRaised += msg.value;
+        campaignData.totalRaised += amount;
 
-        emit ContributionMade(0, msg.sender, msg.value, tokenAllocation);
+        emit ContributionMade(0, msg.sender, amount, tokenAllocation);
 
         updateCampaignState();
     }
@@ -139,8 +145,7 @@ contract Campaign is ICampaign, ICampaignEvents, ReentrancyGuard, Ownable {
 
         _mintCreatorReserve();
 
-        (bool success,) = payable(campaignData.creator).call{value: amount}("");
-        require(success, "Campaign: Withdrawal transfer failed");
+        usdcToken.safeTransfer(campaignData.creator, amount);
 
         emit FundsWithdrawn(0, campaignData.creator, amount);
         emit CampaignStateChanged(0, CampaignState.Succeeded, CampaignState.FundsWithdrawn);
@@ -158,8 +163,7 @@ contract Campaign is ICampaign, ICampaignEvents, ReentrancyGuard, Ownable {
 
         contributions[msg.sender].amount = 0;
 
-        (bool success,) = payable(msg.sender).call{value: amount}("");
-        require(success, "Campaign: Refund transfer failed");
+        usdcToken.safeTransfer(msg.sender, amount);
 
         emit RefundIssued(0, msg.sender, amount);
     }
@@ -168,8 +172,8 @@ contract Campaign is ICampaign, ICampaignEvents, ReentrancyGuard, Ownable {
         require(campaignData.state == CampaignState.Succeeded, "Campaign: Campaign must be successful");
         require(campaignData.liquidityPercentage > 0, "Campaign: No liquidity allocation");
 
-        uint256 ethForLiquidity = (campaignData.totalRaised * campaignData.liquidityPercentage) / 100;
-        require(ethForLiquidity > 0, "Campaign: No ETH for liquidity");
+        uint256 usdcForLiquidity = (campaignData.totalRaised * campaignData.liquidityPercentage) / 100;
+        require(usdcForLiquidity > 0, "Campaign: No USDC for liquidity");
 
         _mintCreatorReserve();
 
@@ -179,19 +183,19 @@ contract Campaign is ICampaign, ICampaignEvents, ReentrancyGuard, Ownable {
         campaignToken.mint(address(this), creatorTokens);
 
         IERC20(address(campaignToken)).approve(address(dexIntegrator), creatorTokens);
+        usdcToken.approve(address(dexIntegrator), usdcForLiquidity);
 
-        (uint256 tokenAmount, uint256 ethAmount,) =
-            dexIntegrator.addLiquidity{value: ethForLiquidity}(address(campaignToken), creatorTokens, ethForLiquidity);
+        (uint256 tokenAmount, uint256 usdcAmount,) =
+            dexIntegrator.addLiquidity(address(campaignToken), creatorTokens, address(usdcToken), usdcForLiquidity);
 
-        uint256 remainingETH = campaignData.totalRaised - ethAmount;
-        if (remainingETH > 0) {
-            (bool success,) = payable(campaignData.creator).call{value: remainingETH}("");
-            require(success, "Campaign: Creator ETH transfer failed");
+        uint256 remainingUSDC = campaignData.totalRaised - usdcAmount;
+        if (remainingUSDC > 0) {
+            usdcToken.safeTransfer(campaignData.creator, remainingUSDC);
         }
 
         campaignData.state = CampaignState.TokenLaunched;
 
-        emit LiquidityPoolCreated(0, address(dexIntegrator), tokenAmount, ethAmount);
+        emit LiquidityPoolCreated(0, address(dexIntegrator), tokenAmount, usdcAmount);
         emit CampaignStateChanged(0, CampaignState.Succeeded, CampaignState.TokenLaunched);
     }
 
@@ -290,22 +294,5 @@ contract Campaign is ICampaign, ICampaignEvents, ReentrancyGuard, Ownable {
         campaignToken = CampaignToken(_tokenAddress);
     }
 
-    receive() external payable {
-        require(msg.value >= MIN_CONTRIBUTION, "Campaign: Contribution below minimum");
-        require(campaignData.state == CampaignState.Active, "Campaign: Campaign not active");
-        require(block.timestamp <= campaignData.deadline, "Campaign: Campaign expired");
-        require(msg.sender != campaignData.creator, "Campaign: Creator cannot contribute");
-
-        // Simplified contribution logic for receive function
-        contributions[msg.sender].contributor = msg.sender;
-        contributions[msg.sender].amount += msg.value;
-        contributions[msg.sender].timestamp = block.timestamp;
-
-        if (!hasContributed[msg.sender]) {
-            contributors.push(msg.sender);
-            hasContributed[msg.sender] = true;
-        }
-
-        campaignData.totalRaised += msg.value;
-    }
+    // Remove receive function since we're not accepting ETH anymore
 }

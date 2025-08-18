@@ -13,9 +13,9 @@ contract CampaignLifecycleTest is BaseTest {
         assertCampaignState(campaignId, CampaignState.Active);
 
         // 2. Multiple contributions
-        uint256 contrib1 = 3 ether;
-        uint256 contrib2 = 4 ether;
-        uint256 contrib3 = 3 ether;
+        uint256 contrib1 = 3000e6; // 3000 USDC
+        uint256 contrib2 = 4000e6; // 4000 USDC
+        uint256 contrib3 = 3000e6; // 3000 USDC
 
         contributeToCompaign(campaignId, contributor1, contrib1);
         contributeToCompaign(campaignId, contributor2, contrib2);
@@ -31,11 +31,11 @@ contract CampaignLifecycleTest is BaseTest {
         assertCampaignState(campaignId, CampaignState.Succeeded);
 
         // 4. Creator withdraws funds
-        uint256 creatorInitialBalance = creator.balance;
+        uint256 creatorInitialBalance = usdcToken.balanceOf(creator);
         vm.prank(creator);
         campaign.withdrawFunds();
 
-        assertEq(creator.balance, creatorInitialBalance + FUNDING_GOAL);
+        assertEq(usdcToken.balanceOf(creator), creatorInitialBalance + FUNDING_GOAL);
         assertCampaignState(campaignId, CampaignState.FundsWithdrawn);
 
         // 5. Contributors claim tokens
@@ -71,13 +71,13 @@ contract CampaignLifecycleTest is BaseTest {
         Campaign campaign = getCampaign(campaignId);
 
         // 2. Contributions with early bonuses
-        uint256 earlyContrib = 2 ether;
+        uint256 earlyContrib = 2000e6; // 2000 USDC
         contributeToCompaign(campaignId, contributor1, earlyContrib);
 
         // Fast forward partially through campaign
         fastForwardTime(CAMPAIGN_DURATION / 3);
 
-        uint256 lateContrib = 8 ether;
+        uint256 lateContrib = 8000e6; // 8000 USDC
         contributeToCompaign(campaignId, contributor2, lateContrib);
 
         // 3. Campaign succeeds
@@ -93,9 +93,9 @@ contract CampaignLifecycleTest is BaseTest {
         // 5. Verify liquidity pool creation
         CampaignData memory data = campaign.getCampaignDetails();
 
-        // Creator should have received remaining ETH after liquidity
-        // uint256 expectedLiquidityETH = (FUNDING_GOAL * LIQUIDITY_PERCENTAGE) / 100;
-        // uint256 expectedRemainingETH = FUNDING_GOAL - expectedLiquidityETH;
+        // Creator should have received remaining USDC after liquidity
+        // uint256 expectedLiquidityUSDC = (FUNDING_GOAL * LIQUIDITY_PERCENTAGE) / 100;
+        // uint256 expectedRemainingUSDC = FUNDING_GOAL - expectedLiquidityUSDC;
 
         // 6. Contributors can claim tokens
         vm.prank(contributor1);
@@ -115,8 +115,8 @@ contract CampaignLifecycleTest is BaseTest {
         Campaign campaign = getCampaign(campaignId);
 
         // 2. Partial contributions
-        uint256 contrib1 = 3 ether;
-        uint256 contrib2 = 2 ether;
+        uint256 contrib1 = 3000e6; // 3000 USDC
+        uint256 contrib2 = 2000e6; // 2000 USDC
 
         contributeToCompaign(campaignId, contributor1, contrib1);
         contributeToCompaign(campaignId, contributor2, contrib2);
@@ -132,8 +132,8 @@ contract CampaignLifecycleTest is BaseTest {
         assertCampaignState(campaignId, CampaignState.Failed);
 
         // 5. Contributors get refunds
-        uint256 contrib1InitialBalance = contributor1.balance;
-        uint256 contrib2InitialBalance = contributor2.balance;
+        uint256 contrib1InitialBalance = usdcToken.balanceOf(contributor1);
+        uint256 contrib2InitialBalance = usdcToken.balanceOf(contributor2);
 
         vm.prank(contributor1);
         campaign.refund();
@@ -141,8 +141,8 @@ contract CampaignLifecycleTest is BaseTest {
         vm.prank(contributor2);
         campaign.refund();
 
-        assertEq(contributor1.balance, contrib1InitialBalance + contrib1);
-        assertEq(contributor2.balance, contrib2InitialBalance + contrib2);
+        assertEq(usdcToken.balanceOf(contributor1), contrib1InitialBalance + contrib1);
+        assertEq(usdcToken.balanceOf(contributor2), contrib2InitialBalance + contrib2);
 
         // 6. No tokens distributed
         CampaignData memory data = campaign.getCampaignDetails();
@@ -223,7 +223,7 @@ contract CampaignLifecycleTest is BaseTest {
 
         uint256 campaign1Id = factory.createCampaign(
             "ipfs://campaign1",
-            5 ether,
+            5000e6, // 5000 USDC
             CAMPAIGN_DURATION,
             CREATOR_RESERVE,
             LIQUIDITY_PERCENTAGE,
@@ -234,7 +234,7 @@ contract CampaignLifecycleTest is BaseTest {
 
         uint256 campaign2Id = factory.createCampaign(
             "ipfs://campaign2",
-            15 ether,
+            15000e6, // 15000 USDC
             CAMPAIGN_DURATION * 2,
             30, // Different reserve
             50, // Different liquidity
@@ -246,8 +246,8 @@ contract CampaignLifecycleTest is BaseTest {
         vm.stopPrank();
 
         // Fund both campaigns differently
-        contributeToCompaign(campaign1Id, contributor1, 5 ether); // Fully fund
-        contributeToCompaign(campaign2Id, contributor2, 10 ether); // Partially fund
+        contributeToCompaign(campaign1Id, contributor1, 5000e6); // Fully fund
+        contributeToCompaign(campaign2Id, contributor2, 10000e6); // Partially fund
 
         Campaign campaign1 = getCampaign(campaign1Id);
         Campaign campaign2 = getCampaign(campaign2Id);
@@ -278,18 +278,18 @@ contract CampaignLifecycleTest is BaseTest {
 
         vm.prank(makeAddr("anotherCreator"));
         uint256 campaign2Id =
-            factory.createCampaign("ipfs://campaign2", 8 ether, CAMPAIGN_DURATION, 25, 40, true, "Token 2", "TK2");
+            factory.createCampaign("ipfs://campaign2", 8000e6, CAMPAIGN_DURATION, 25, 40, true, "Token 2", "TK2");
 
         // Contributor participates in both campaigns
-        contributeToCompaign(campaign1Id, contributor1, 5 ether);
-        contributeToCompaign(campaign2Id, contributor1, 4 ether);
+        contributeToCompaign(campaign1Id, contributor1, 5000e6); // 5000 USDC
+        contributeToCompaign(campaign2Id, contributor1, 4000e6); // 4000 USDC
 
         Campaign campaign1 = getCampaign(campaign1Id);
         Campaign campaign2 = getCampaign(campaign2Id);
 
         // Complete both campaigns
-        contributeToCompaign(campaign1Id, contributor2, 5 ether);
-        contributeToCompaign(campaign2Id, contributor2, 4 ether);
+        contributeToCompaign(campaign1Id, contributor2, 5000e6); // 5000 USDC
+        contributeToCompaign(campaign2Id, contributor2, 4000e6); // 4000 USDC
 
         campaign1.updateCampaignState();
         campaign2.updateCampaignState();

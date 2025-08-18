@@ -2,14 +2,20 @@
 pragma solidity ^0.8.24;
 
 import "../../src/Campaign.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract MockMaliciousContract {
     bool public attackActive;
     Campaign public targetCampaign;
     uint256 public attackCount;
+    IERC20 public usdcToken;
 
     function setTarget(address _campaign) external {
         targetCampaign = Campaign(payable(_campaign));
+    }
+
+    function setUSDCToken(address _usdcToken) external {
+        usdcToken = IERC20(_usdcToken);
     }
 
     function activateAttack() external {
@@ -21,8 +27,9 @@ contract MockMaliciousContract {
         attackCount = 0;
     }
 
-    function maliciousContribute() external payable {
-        targetCampaign.contribute{value: msg.value}();
+    function maliciousContribute(uint256 amount) external {
+        usdcToken.approve(address(targetCampaign), amount);
+        targetCampaign.contribute(amount);
     }
 
     function maliciousRefund() external {

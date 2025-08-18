@@ -10,13 +10,15 @@ import "../../src/PricingCurve.sol";
 import "../../src/DEXIntegrator.sol";
 import "../mocks/MockUniswapRouter.sol";
 import "../mocks/MockUniswapFactory.sol";
+import "../mocks/MockUSDC.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract BaseTest is Test {
     // Common test constants
-    uint256 constant INITIAL_BALANCE = 100 ether;
-    uint256 constant FUNDING_GOAL = 10 ether;
+    uint256 constant INITIAL_USDC_BALANCE = 100000e6; // 100,000 USDC (6 decimals)
+    uint256 constant FUNDING_GOAL = 10000e6; // 10,000 USDC
     uint256 constant CAMPAIGN_DURATION = 30 days;
-    uint256 constant MIN_CONTRIBUTION = 0.001 ether;
+    uint256 constant MIN_CONTRIBUTION = 1e6; // 1 USDC
     uint256 constant CREATOR_RESERVE = 20; // 20%
     uint256 constant LIQUIDITY_PERCENTAGE = 30; // 30%
 
@@ -36,9 +38,13 @@ contract BaseTest is Test {
     DEXIntegrator public dexIntegrator;
     MockUniswapRouter public mockRouter;
     MockUniswapFactory public mockUniswapFactory;
+    MockUSDC public usdcToken;
 
     function setUp() public virtual {
         vm.startPrank(deployer);
+
+        // Deploy mock USDC token
+        usdcToken = new MockUSDC();
 
         // Deploy mock Uniswap contracts
         mockRouter = new MockUniswapRouter();
@@ -51,17 +57,22 @@ contract BaseTest is Test {
 
         // Deploy main factory
         factory = new CrowdfundingFactory(
-            address(tokenFactory), address(pricingCurve), address(dexIntegrator), feeRecipient, deployer
+            address(tokenFactory),
+            address(pricingCurve),
+            address(dexIntegrator),
+            address(usdcToken),
+            feeRecipient,
+            deployer
         );
 
-        vm.stopPrank();
+        // Fund test accounts with USDC (while still in deployer context)
+        usdcToken.transfer(creator, INITIAL_USDC_BALANCE);
+        usdcToken.transfer(contributor1, INITIAL_USDC_BALANCE);
+        usdcToken.transfer(contributor2, INITIAL_USDC_BALANCE);
+        usdcToken.transfer(contributor3, INITIAL_USDC_BALANCE);
+        usdcToken.transfer(maliciousUser, INITIAL_USDC_BALANCE);
 
-        // Fund test accounts
-        vm.deal(creator, INITIAL_BALANCE);
-        vm.deal(contributor1, INITIAL_BALANCE);
-        vm.deal(contributor2, INITIAL_BALANCE);
-        vm.deal(contributor3, INITIAL_BALANCE);
-        vm.deal(maliciousUser, INITIAL_BALANCE);
+        vm.stopPrank();
     }
 
     // Helper functions
@@ -99,8 +110,10 @@ contract BaseTest is Test {
 
     function contributeToCompaign(uint256 campaignId, address contributor, uint256 amount) internal {
         Campaign campaign = getCampaign(campaignId);
-        vm.prank(contributor);
-        campaign.contribute{value: amount}();
+        vm.startPrank(contributor);
+        usdcToken.approve(address(campaign), amount);
+        campaign.contribute(amount);
+        vm.stopPrank();
     }
 
     function fastForwardToDeadline(uint256 campaignId) internal {

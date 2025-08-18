@@ -15,17 +15,21 @@ contract ContributionFuzzTest is BaseTest {
 
     function testFuzz_Contribute_RandomAmounts(uint256 amount) public {
         // Bound the amount to reasonable range - must be at least MIN_CONTRIBUTION
-        amount = bound(amount, 0.001 ether, 10 ether);
+        amount = bound(amount, 1e6, 10000e6); // 1 USDC to 10,000 USDC
 
         // Ensure amount doesn't exceed funding goal to avoid campaign ending
         if (amount >= FUNDING_GOAL) {
-            amount = FUNDING_GOAL - 0.001 ether;
+            amount = FUNDING_GOAL - 1e6;
         }
 
-        vm.deal(contributor1, amount + 1 ether); // Ensure sufficient balance
+        // Give contributor enough USDC
+        vm.prank(deployer);
+        usdcToken.transfer(contributor1, amount + 1000e6);
 
-        vm.prank(contributor1);
-        campaign.contribute{value: amount}();
+        vm.startPrank(contributor1);
+        usdcToken.approve(address(campaign), amount);
+        campaign.contribute(amount);
+        vm.stopPrank();
 
         // Verify contribution recorded correctly
         Contribution memory contrib = campaign.getContribution(contributor1);
@@ -50,18 +54,21 @@ contract ContributionFuzzTest is BaseTest {
 
         for (uint256 i = 0; i < amounts.length; i++) {
             // Bound each amount
-            amounts[i] = bound(amounts[i], 0.001 ether, 1 ether);
+            amounts[i] = bound(amounts[i], 1e6, 1000e6); // 1 to 1000 USDC
 
             address currentContributor = contributors[contributorIndex % 3];
-            vm.deal(currentContributor, amounts[i] + 1 ether);
+            vm.prank(deployer);
+            usdcToken.transfer(currentContributor, amounts[i] + 100e6);
 
             // Skip if campaign would exceed funding goal
             if (totalContributed + amounts[i] > FUNDING_GOAL) {
                 continue;
             }
 
-            vm.prank(currentContributor);
-            campaign.contribute{value: amounts[i]}();
+            vm.startPrank(currentContributor);
+            usdcToken.approve(address(campaign), amounts[i]);
+            campaign.contribute(amounts[i]);
+            vm.stopPrank();
 
             totalContributed += amounts[i];
 
@@ -75,16 +82,19 @@ contract ContributionFuzzTest is BaseTest {
     }
 
     function testFuzz_ContributionTiming_TokenAllocation(uint256 amount, uint256 timeElapsed) public {
-        amount = bound(amount, 0.001 ether, 5 ether);
+        amount = bound(amount, 1e6, 5000e6); // 1 to 5000 USDC
         timeElapsed = bound(timeElapsed, 0, CAMPAIGN_DURATION - 1);
 
-        vm.deal(contributor1, amount + 1 ether);
+        vm.prank(deployer);
+        usdcToken.transfer(contributor1, amount + 100e6);
 
         // Fast forward time
         vm.warp(block.timestamp + timeElapsed);
 
-        vm.prank(contributor1);
-        campaign.contribute{value: amount}();
+        vm.startPrank(contributor1);
+        usdcToken.approve(address(campaign), amount);
+        campaign.contribute(amount);
+        vm.stopPrank();
 
         Contribution memory contrib = campaign.getContribution(contributor1);
 
@@ -100,19 +110,22 @@ contract ContributionFuzzTest is BaseTest {
     }
 
     function testFuzz_ContributeAndRefund_Consistency(uint256 contributionAmount, uint256 timeDelay) public {
-        contributionAmount = bound(contributionAmount, 0.001 ether, FUNDING_GOAL - 1 ether);
+        contributionAmount = bound(contributionAmount, 1e6, FUNDING_GOAL - 1000e6); // 1 USDC to funding goal - 1000 USDC
         timeDelay = bound(timeDelay, 1, CAMPAIGN_DURATION + 1 days);
 
         // Use strict campaign for refund testing
         uint256 strictCampaignId = createTestCampaignWithGoalRequired();
         Campaign strictCampaign = getCampaign(strictCampaignId);
 
-        vm.deal(contributor1, contributionAmount + 1 ether);
-        uint256 initialBalance = contributor1.balance;
+        vm.prank(deployer);
+        usdcToken.transfer(contributor1, contributionAmount + 100e6);
+        uint256 initialBalance = usdcToken.balanceOf(contributor1);
 
         // Contribute
-        vm.prank(contributor1);
-        strictCampaign.contribute{value: contributionAmount}();
+        vm.startPrank(contributor1);
+        usdcToken.approve(address(strictCampaign), contributionAmount);
+        strictCampaign.contribute(contributionAmount);
+        vm.stopPrank();
 
         // Fast forward past deadline
         vm.warp(block.timestamp + timeDelay);
@@ -124,34 +137,42 @@ contract ContributionFuzzTest is BaseTest {
             strictCampaign.refund();
 
             // Should get original contribution back
-            assertEq(contributor1.balance, initialBalance);
+            assertEq(usdcToken.balanceOf(contributor1), initialBalance);
         }
     }
 
     function testFuzz_TokenAllocation_Proportionality(uint256 contrib1, uint256 contrib2, uint256 contrib3) public {
         // Bound contributions
-        contrib1 = bound(contrib1, 0.001 ether, 3 ether);
-        contrib2 = bound(contrib2, 0.001 ether, 3 ether);
-        contrib3 = bound(contrib3, 0.001 ether, 3 ether);
+        contrib1 = bound(contrib1, 1e6, 3000e6); // 1 to 3000 USDC
+        contrib2 = bound(contrib2, 1e6, 3000e6); // 1 to 3000 USDC
+        contrib3 = bound(contrib3, 1e6, 3000e6); // 1 to 3000 USDC
 
         // Ensure we don't exceed funding goal
         uint256 total = contrib1 + contrib2 + contrib3;
         vm.assume(total <= FUNDING_GOAL);
 
         // Fund contributors
-        vm.deal(contributor1, contrib1 + 1 ether);
-        vm.deal(contributor2, contrib2 + 1 ether);
-        vm.deal(contributor3, contrib3 + 1 ether);
+        vm.startPrank(deployer);
+        usdcToken.transfer(contributor1, contrib1 + 100e6);
+        usdcToken.transfer(contributor2, contrib2 + 100e6);
+        usdcToken.transfer(contributor3, contrib3 + 100e6);
+        vm.stopPrank();
 
         // Make contributions
-        vm.prank(contributor1);
-        campaign.contribute{value: contrib1}();
+        vm.startPrank(contributor1);
+        usdcToken.approve(address(campaign), contrib1);
+        campaign.contribute(contrib1);
+        vm.stopPrank();
 
-        vm.prank(contributor2);
-        campaign.contribute{value: contrib2}();
+        vm.startPrank(contributor2);
+        usdcToken.approve(address(campaign), contrib2);
+        campaign.contribute(contrib2);
+        vm.stopPrank();
 
-        vm.prank(contributor3);
-        campaign.contribute{value: contrib3}();
+        vm.startPrank(contributor3);
+        usdcToken.approve(address(campaign), contrib3);
+        campaign.contribute(contrib3);
+        vm.stopPrank();
 
         // Get token allocations
         uint256 tokens1 = campaign.getContribution(contributor1).tokenAllocation;
@@ -181,7 +202,7 @@ contract ContributionFuzzTest is BaseTest {
         uint256 liquidityPercentage
     ) public {
         // Test parameter validation with fuzzing
-        fundingGoal = bound(fundingGoal, 0.05 ether, 15000 ether);
+        fundingGoal = bound(fundingGoal, 50e6, 15000000e6); // 50 to 15M USDC
         duration = bound(duration, 0.5 days, 365 days);
         creatorReserve = bound(creatorReserve, 0, 100);
         liquidityPercentage = bound(liquidityPercentage, 0, 100);
@@ -199,14 +220,14 @@ contract ContributionFuzzTest is BaseTest {
             assertEq(data.creator, creator);
 
             // Verify parameters are within valid ranges for successful creation
-            assertTrue(fundingGoal >= 0.1 ether && fundingGoal <= 10000 ether);
+            assertTrue(fundingGoal >= 100e6 && fundingGoal <= 10000000e6); // 100 USDC to 10M USDC
             assertTrue(duration >= 1 days && duration <= 180 days);
             assertTrue(creatorReserve <= 50);
             assertTrue(liquidityPercentage <= 80);
         } catch {
             // Expected for invalid parameters - verify they are actually invalid
             assertTrue(
-                fundingGoal < 0.1 ether || fundingGoal > 10000 ether || duration < 1 days || duration > 180 days
+                fundingGoal < 100e6 || fundingGoal > 10000000e6 || duration < 1 days || duration > 180 days
                     || creatorReserve > 50 || liquidityPercentage > 80
             );
         }
@@ -259,9 +280,9 @@ contract ContributionFuzzTest is BaseTest {
         uint256 timeRemaining,
         uint256 totalDuration
     ) public view {
-        contribution = bound(contribution, 1, 1000 ether);
-        totalRaised = bound(totalRaised, 0, 10000 ether);
-        fundingGoal = bound(fundingGoal, 1 ether, 10000 ether);
+        contribution = bound(contribution, 1e6, 1000000e6); // 1 to 1M USDC
+        totalRaised = bound(totalRaised, 0, 10000000e6); // 0 to 10M USDC
+        fundingGoal = bound(fundingGoal, 1000e6, 10000000e6); // 1000 to 10M USDC
         totalDuration = bound(totalDuration, 1 days, 365 days);
         timeRemaining = bound(timeRemaining, 0, totalDuration);
 
