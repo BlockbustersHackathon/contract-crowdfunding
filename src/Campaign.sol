@@ -91,12 +91,9 @@ contract Campaign is ICampaign, ICampaignEvents, ReentrancyGuard, Ownable {
         require(amount >= MIN_CONTRIBUTION, "Campaign: Contribution below minimum");
         require(msg.sender != campaignData.creator, "Campaign: Creator cannot contribute");
 
-        uint256 timeRemaining = campaignData.deadline > block.timestamp ? campaignData.deadline - block.timestamp : 0;
         uint256 totalDuration = campaignData.deadline - campaignData.createdAt;
 
-        uint256 tokenAllocation = pricingCurve.calculateTokenAllocation(
-            amount, campaignData.totalRaised, campaignData.fundingGoal, timeRemaining, totalDuration
-        );
+        uint256 tokenAllocation = pricingCurve.calculateTokenAllocation(amount, totalDuration);
 
         usdcToken.safeTransferFrom(msg.sender, address(this), amount);
 
@@ -268,12 +265,9 @@ contract Campaign is ICampaign, ICampaignEvents, ReentrancyGuard, Ownable {
     }
 
     function calculateTokenAllocation(uint256 contributionAmount) external view returns (uint256) {
-        uint256 timeRemaining = campaignData.deadline > block.timestamp ? campaignData.deadline - block.timestamp : 0;
         uint256 totalDuration = campaignData.deadline - campaignData.createdAt;
 
-        return pricingCurve.calculateTokenAllocation(
-            contributionAmount, campaignData.totalRaised, campaignData.fundingGoal, timeRemaining, totalDuration
-        );
+        return pricingCurve.calculateTokenAllocation(contributionAmount, totalDuration);
     }
 
     function getCampaignState() external view returns (CampaignState) {

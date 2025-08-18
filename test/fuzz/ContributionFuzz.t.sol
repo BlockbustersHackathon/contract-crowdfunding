@@ -286,8 +286,7 @@ contract ContributionFuzzTest is BaseTest {
         totalDuration = bound(totalDuration, 1 days, 365 days);
         timeRemaining = bound(timeRemaining, 0, totalDuration);
 
-        try pricingCurve.calculateTokenAllocation(contribution, totalRaised, fundingGoal, timeRemaining, totalDuration)
-        returns (uint256 tokens) {
+        try pricingCurve.calculateTokenAllocation(contribution, totalDuration) returns (uint256 tokens) {
             // Should always return positive tokens for positive contribution
             assertGt(tokens, 0);
 

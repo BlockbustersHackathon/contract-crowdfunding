@@ -53,13 +53,10 @@ interface IDEXIntegrator {
 }
 
 interface IPricingCurve {
-    function calculateTokenAllocation(
-        uint256 contributionAmount,
-        uint256 totalRaised,
-        uint256 fundingGoal,
-        uint256 timeRemaining,
-        uint256 totalDuration
-    ) external pure returns (uint256);
+    function calculateTokenAllocation(uint256 contributionAmount, uint256 totalDuration)
+        external
+        pure
+        returns (uint256);
 }
 
 interface ITreasury {

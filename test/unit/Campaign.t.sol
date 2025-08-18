@@ -96,28 +96,28 @@ contract CampaignTest is BaseTest {
         vm.stopPrank();
     }
 
-    function test_EarlyBackerBonus() public {
+    function test_StablePricing() public {
         uint256 contributionAmount = 1000e6; // 1000 USDC
 
-        // Early contribution should get bonus
+        // Early contribution with completely stable pricing
         vm.startPrank(contributor1);
         usdcToken.approve(address(campaign), contributionAmount);
         campaign.contribute(contributionAmount);
         vm.stopPrank();
         Contribution memory earlyContrib = campaign.getContribution(contributor1);
 
-        // Fast forward to later in campaign (past early bird period which is 25%)
+        // Fast forward to later in campaign
         fastForwardTime(CAMPAIGN_DURATION / 3); // 33% through campaign
 
+        // Second contribution - with stable pricing, should get same allocation
         vm.startPrank(contributor2);
         usdcToken.approve(address(campaign), contributionAmount);
         campaign.contribute(contributionAmount);
         vm.stopPrank();
         Contribution memory laterContrib = campaign.getContribution(contributor2);
 
-        // Early contributor should have more tokens for same contribution due to early bird bonus
-        // Note: The exact amounts will depend on the pricing curve logic
-        assertGt(earlyContrib.tokenAllocation, laterContrib.tokenAllocation);
+        // With completely stable pricing, allocations should always be equal
+        assertEq(earlyContrib.tokenAllocation, laterContrib.tokenAllocation);
     }
 
     // State Transition Tests
@@ -312,10 +312,10 @@ contract CampaignTest is BaseTest {
         uint256 allocation = campaign.calculateTokenAllocation(amount);
         assertGt(allocation, 0);
 
-        // Later in campaign should give less allocation
+        // With stable pricing, allocation should be same regardless of timing
         fastForwardTime(CAMPAIGN_DURATION / 2);
         uint256 laterAllocation = campaign.calculateTokenAllocation(amount);
-        assertLt(laterAllocation, allocation);
+        assertEq(laterAllocation, allocation);
     }
 
     function test_GetContributors() public {
