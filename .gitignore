@@ -12,3 +12,5 @@ docs/
 
 # Dotenv file
 .env
+
+local_docs/
