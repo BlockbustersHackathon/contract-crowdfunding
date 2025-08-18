@@ -74,7 +74,6 @@ contract ReentrancyAttackTest is BaseTest {
             CAMPAIGN_DURATION,
             CREATOR_RESERVE,
             LIQUIDITY_PERCENTAGE,
-            true,
             "Malicious Token",
             "MAL"
         );
@@ -99,8 +98,8 @@ contract ReentrancyAttackTest is BaseTest {
         uint256 finalBalance = usdcToken.balanceOf(address(maliciousContract));
         assertEq(finalBalance, initialBalance + 5000e6);
 
-        // Campaign state should be updated correctly
-        assertEq(uint256(maliciousCampaign.getCampaignState()), uint256(CampaignState.FundsWithdrawn));
+        // Campaign state should remain Succeeded
+        assertEq(uint256(maliciousCampaign.getCampaignState()), uint256(CampaignState.Succeeded));
     }
 
     function test_TokenMinting_NoReentrancy() public {

@@ -76,7 +76,6 @@ contract CrowdfundingFactory is ICrowdfundingFactory, ICampaignEvents, Ownable, 
         uint256 duration,
         uint256 creatorReservePercentage,
         uint256 liquidityPercentage,
-        bool allowEarlyWithdrawal,
         string memory tokenName,
         string memory tokenSymbol
     )
@@ -98,7 +97,6 @@ contract CrowdfundingFactory is ICrowdfundingFactory, ICampaignEvents, Ownable, 
             duration,
             creatorReservePercentage,
             liquidityPercentage,
-            allowEarlyWithdrawal,
             address(0), // Will be updated after token creation
             address(pricingCurve),
             address(dexIntegrator),

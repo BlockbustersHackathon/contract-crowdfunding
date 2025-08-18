@@ -76,7 +76,6 @@ contract DeployTest is Test {
             30 days,
             10, // 10% creator reserve
             20, // 20% liquidity
-            false, // no early withdrawal
             "Test Token",
             "TEST"
         );

@@ -4,16 +4,7 @@ pragma solidity ^0.8.24;
 enum CampaignState {
     Active,
     Succeeded,
-    Failed,
-    FundsWithdrawn,
-    TokenLaunched,
-    Cancelled,
-    RefundsAvailable
-}
-
-enum WithdrawalCondition {
-    Flexible,
-    GoalRequired
+    Failed
 }
 
 struct CampaignData {
@@ -26,8 +17,6 @@ struct CampaignData {
     uint256 liquidityPercentage;
     address tokenAddress;
     CampaignState state;
-    WithdrawalCondition withdrawalCondition;
-    bool allowEarlyWithdrawal;
     uint256 createdAt;
 }
 

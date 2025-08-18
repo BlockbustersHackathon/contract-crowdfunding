@@ -84,24 +84,13 @@ contract BaseTest is Test {
             CAMPAIGN_DURATION,
             CREATOR_RESERVE,
             LIQUIDITY_PERCENTAGE,
-            true, // allowEarlyWithdrawal
             "Test Token",
             "TEST"
         );
     }
 
     function createTestCampaignWithGoalRequired() internal returns (uint256 campaignId) {
-        vm.prank(creator);
-        campaignId = factory.createCampaign(
-            "ipfs://test-metadata",
-            FUNDING_GOAL,
-            CAMPAIGN_DURATION,
-            CREATOR_RESERVE,
-            LIQUIDITY_PERCENTAGE,
-            false, // allowEarlyWithdrawal - goal required
-            "Test Token",
-            "TEST"
-        );
+        return createTestCampaign(); // Now all campaigns require goal to succeed
     }
 
     function getCampaign(uint256 campaignId) internal view returns (Campaign) {

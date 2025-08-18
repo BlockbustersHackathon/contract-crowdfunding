@@ -10,7 +10,6 @@ interface ICrowdfundingFactory {
         uint256 duration,
         uint256 creatorReservePercentage,
         uint256 liquidityPercentage,
-        bool allowEarlyWithdrawal,
         string memory tokenName,
         string memory tokenSymbol
     ) external returns (uint256 campaignId);

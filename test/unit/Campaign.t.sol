@@ -128,24 +128,21 @@ contract CampaignTest is BaseTest {
         assertCampaignState(campaignId, CampaignState.Succeeded);
     }
 
-    function test_StateTransition_ActiveToSucceeded_DeadlineWithFlexible() public {
+    function test_StateTransition_ActiveToFailed_DeadlineWithoutGoal() public {
         contributeToCompaign(campaignId, contributor1, FUNDING_GOAL / 2);
         fastForwardToDeadline(campaignId);
         campaign.updateCampaignState();
 
-        // Should succeed because allowEarlyWithdrawal is true
-        assertCampaignState(campaignId, CampaignState.Succeeded);
+        // Should fail because goal was not reached
+        assertCampaignState(campaignId, CampaignState.Failed);
     }
 
-    function test_StateTransition_ActiveToFailed_DeadlineWithoutGoal() public {
-        uint256 strictCampaignId = createTestCampaignWithGoalRequired();
-        Campaign strictCampaign = getCampaign(strictCampaignId);
+    function test_StateTransition_ActiveToFailed_DeadlineWithPartialFunding() public {
+        contributeToCompaign(campaignId, contributor1, FUNDING_GOAL / 2);
+        fastForwardToDeadline(campaignId);
+        campaign.updateCampaignState();
 
-        contributeToCompaign(strictCampaignId, contributor1, FUNDING_GOAL / 2);
-        fastForwardToDeadline(strictCampaignId);
-        strictCampaign.updateCampaignState();
-
-        assertEq(uint256(strictCampaign.getCampaignState()), uint256(CampaignState.Failed));
+        assertEq(uint256(campaign.getCampaignState()), uint256(CampaignState.Failed));
     }
 
     // Fund Withdrawal Tests
@@ -159,7 +156,6 @@ contract CampaignTest is BaseTest {
         campaign.withdrawFunds();
 
         assertEq(usdcToken.balanceOf(creator), initialBalance + FUNDING_GOAL);
-        assertCampaignState(campaignId, CampaignState.FundsWithdrawn);
     }
 
     function test_WithdrawFunds_OnlyCreator() public {

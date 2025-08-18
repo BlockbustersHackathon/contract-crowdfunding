@@ -36,7 +36,6 @@ contract CampaignLifecycleTest is BaseTest {
         campaign.withdrawFunds();
 
         assertEq(usdcToken.balanceOf(creator), creatorInitialBalance + FUNDING_GOAL);
-        assertCampaignState(campaignId, CampaignState.FundsWithdrawn);
 
         // 5. Contributors claim tokens
         vm.prank(contributor1);
@@ -87,8 +86,6 @@ contract CampaignLifecycleTest is BaseTest {
         // 4. Creator launches token on DEX
         vm.prank(creator);
         campaign.createLiquidityPool();
-
-        assertCampaignState(campaignId, CampaignState.TokenLaunched);
 
         // 5. Verify liquidity pool creation
         CampaignData memory data = campaign.getCampaignDetails();
@@ -181,41 +178,29 @@ contract CampaignLifecycleTest is BaseTest {
         assertCampaignState(campaignId, CampaignState.Succeeded);
     }
 
-    function test_EarlyWithdrawal_vs_GoalRequired() public {
-        // Create two campaigns: one flexible, one strict
-        uint256 flexibleCampaignId = createTestCampaign(); // allowEarlyWithdrawal = true
-        uint256 strictCampaignId = createTestCampaignWithGoalRequired(); // allowEarlyWithdrawal = false
+    function test_FailedCampaign_RefundFlow_DeadlineReached() public {
+        // Create campaign and partially fund it
+        uint256 campaignId = createTestCampaign();
+        Campaign campaign = getCampaign(campaignId);
 
-        Campaign flexibleCampaign = getCampaign(flexibleCampaignId);
-        Campaign strictCampaign = getCampaign(strictCampaignId);
-
-        // Partially fund both campaigns
+        // Partially fund the campaign
         uint256 partialAmount = FUNDING_GOAL / 2;
-        contributeToCompaign(flexibleCampaignId, contributor1, partialAmount);
-        contributeToCompaign(strictCampaignId, contributor2, partialAmount);
+        contributeToCompaign(campaignId, contributor1, partialAmount);
+        contributeToCompaign(campaignId, contributor2, partialAmount / 2);
 
         // Fast forward to deadline
-        fastForwardToDeadline(flexibleCampaignId);
-        fastForwardToDeadline(strictCampaignId);
+        fastForwardToDeadline(campaignId);
 
-        // Update states
-        flexibleCampaign.updateCampaignState();
-        strictCampaign.updateCampaignState();
+        // Update state - should fail because goal not reached
+        campaign.updateCampaignState();
+        assertCampaignState(campaignId, CampaignState.Failed);
 
-        // Flexible campaign should succeed, strict should fail
-        assertCampaignState(flexibleCampaignId, CampaignState.Succeeded);
-        assertCampaignState(strictCampaignId, CampaignState.Failed);
-
-        // Flexible campaign allows withdrawal and token claiming
-        vm.prank(creator);
-        flexibleCampaign.withdrawFunds();
-
+        // Contributors can get refunds
         vm.prank(contributor1);
-        flexibleCampaign.claimTokens();
+        campaign.refund();
 
-        // Strict campaign allows refunds
         vm.prank(contributor2);
-        strictCampaign.refund();
+        campaign.refund();
     }
 
     function test_MultipleCampaigns_SameCreator() public {
@@ -227,7 +212,6 @@ contract CampaignLifecycleTest is BaseTest {
             CAMPAIGN_DURATION,
             CREATOR_RESERVE,
             LIQUIDITY_PERCENTAGE,
-            true,
             "Token 1",
             "TK1"
         );
@@ -238,7 +222,6 @@ contract CampaignLifecycleTest is BaseTest {
             CAMPAIGN_DURATION * 2,
             30, // Different reserve
             50, // Different liquidity
-            false,
             "Token 2",
             "TK2"
         );
@@ -278,7 +261,7 @@ contract CampaignLifecycleTest is BaseTest {
 
         vm.prank(makeAddr("anotherCreator"));
         uint256 campaign2Id =
-            factory.createCampaign("ipfs://campaign2", 8000e6, CAMPAIGN_DURATION, 25, 40, true, "Token 2", "TK2");
+            factory.createCampaign("ipfs://campaign2", 8000e6, CAMPAIGN_DURATION, 25, 40, "Token 2", "TK2");
 
         // Contributor participates in both campaigns
         contributeToCompaign(campaign1Id, contributor1, 5000e6); // 5000 USDC

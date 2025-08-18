@@ -51,7 +51,6 @@ contract Campaign is ICampaign, ICampaignEvents, ReentrancyGuard, Ownable {
         uint256 _duration,
         uint256 _creatorReservePercentage,
         uint256 _liquidityPercentage,
-        bool _allowEarlyWithdrawal,
         address _tokenAddress,
         address _pricingCurve,
         address _dexIntegrator,
@@ -77,8 +76,6 @@ contract Campaign is ICampaign, ICampaignEvents, ReentrancyGuard, Ownable {
             liquidityPercentage: _liquidityPercentage,
             tokenAddress: _tokenAddress,
             state: CampaignState.Active,
-            withdrawalCondition: _allowEarlyWithdrawal ? WithdrawalCondition.Flexible : WithdrawalCondition.GoalRequired,
-            allowEarlyWithdrawal: _allowEarlyWithdrawal,
             createdAt: block.timestamp
         });
 
@@ -117,11 +114,7 @@ contract Campaign is ICampaign, ICampaignEvents, ReentrancyGuard, Ownable {
     function claimTokens() external nonReentrant {
         require(hasContributed[msg.sender], "Campaign: No contribution found");
         require(!contributions[msg.sender].claimed, "Campaign: Tokens already claimed");
-        require(
-            campaignData.state == CampaignState.Succeeded || campaignData.state == CampaignState.FundsWithdrawn
-                || campaignData.state == CampaignState.TokenLaunched,
-            "Campaign: Cannot claim tokens yet"
-        );
+        require(campaignData.state == CampaignState.Succeeded, "Campaign: Cannot claim tokens yet");
 
         uint256 tokenAmount = contributions[msg.sender].tokenAllocation;
         require(tokenAmount > 0, "Campaign: No tokens to claim");
@@ -138,22 +131,16 @@ contract Campaign is ICampaign, ICampaignEvents, ReentrancyGuard, Ownable {
         require(campaignData.totalRaised > 0, "Campaign: No funds to withdraw");
 
         uint256 amount = campaignData.totalRaised;
-        campaignData.state = CampaignState.FundsWithdrawn;
-
         _mintCreatorReserve();
 
         usdcToken.safeTransfer(campaignData.creator, amount);
 
         emit FundsWithdrawn(0, campaignData.creator, amount);
-        emit CampaignStateChanged(0, CampaignState.Succeeded, CampaignState.FundsWithdrawn);
     }
 
     function refund() external nonReentrant {
         require(hasContributed[msg.sender], "Campaign: No contribution found");
-        require(
-            campaignData.state == CampaignState.Failed || campaignData.state == CampaignState.RefundsAvailable,
-            "Campaign: Refunds not available"
-        );
+        require(campaignData.state == CampaignState.Failed, "Campaign: Refunds not available");
 
         uint256 amount = contributions[msg.sender].amount;
         require(amount > 0, "Campaign: No funds to refund");
@@ -190,10 +177,7 @@ contract Campaign is ICampaign, ICampaignEvents, ReentrancyGuard, Ownable {
             usdcToken.safeTransfer(campaignData.creator, remainingUSDC);
         }
 
-        campaignData.state = CampaignState.TokenLaunched;
-
         emit LiquidityPoolCreated(0, address(dexIntegrator), tokenAmount, usdcAmount);
-        emit CampaignStateChanged(0, CampaignState.Succeeded, CampaignState.TokenLaunched);
     }
 
     function extendDeadline(uint256 newDeadline) external onlyCreator onlyActiveState {
@@ -214,13 +198,8 @@ contract Campaign is ICampaign, ICampaignEvents, ReentrancyGuard, Ownable {
             campaignData.state = CampaignState.Succeeded;
             emit CampaignSucceeded(0, campaignData.totalRaised);
         } else if (block.timestamp > campaignData.deadline) {
-            if (campaignData.allowEarlyWithdrawal) {
-                campaignData.state = CampaignState.Succeeded;
-                emit CampaignSucceeded(0, campaignData.totalRaised);
-            } else {
-                campaignData.state = CampaignState.Failed;
-                emit CampaignFailed(0, campaignData.totalRaised);
-            }
+            campaignData.state = CampaignState.Failed;
+            emit CampaignFailed(0, campaignData.totalRaised);
         }
 
         if (campaignData.state != previousState) {

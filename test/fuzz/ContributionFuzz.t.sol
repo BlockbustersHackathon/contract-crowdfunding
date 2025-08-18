@@ -210,7 +210,7 @@ contract ContributionFuzzTest is BaseTest {
         vm.prank(creator);
 
         try factory.createCampaign(
-            "ipfs://fuzz-test", fundingGoal, duration, creatorReserve, liquidityPercentage, true, "Fuzz Token", "FUZZ"
+            "ipfs://fuzz-test", fundingGoal, duration, creatorReserve, liquidityPercentage, "Fuzz Token", "FUZZ"
         ) returns (uint256 newCampaignId) {
             // If successful, verify the campaign was created properly
             CampaignData memory data = factory.getCampaign(newCampaignId);
@@ -250,8 +250,8 @@ contract ContributionFuzzTest is BaseTest {
             // Should still be active if deadline not passed
             assertEq(uint256(state), uint256(CampaignState.Active));
         } else {
-            // Should succeed because allowEarlyWithdrawal is true
-            assertEq(uint256(state), uint256(CampaignState.Succeeded));
+            // Should fail because goal was not reached
+            assertEq(uint256(state), uint256(CampaignState.Failed));
         }
     }
 

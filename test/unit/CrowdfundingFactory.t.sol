@@ -12,7 +12,6 @@ contract CrowdfundingFactoryTest is BaseTest {
             CAMPAIGN_DURATION,
             CREATOR_RESERVE,
             LIQUIDITY_PERCENTAGE,
-            true,
             "Test Token",
             "TEST"
         );
@@ -24,7 +23,6 @@ contract CrowdfundingFactoryTest is BaseTest {
         assertEq(campaign.creator, creator);
         assertEq(campaign.fundingGoal, FUNDING_GOAL);
         assertEq(campaign.creatorReservePercentage, CREATOR_RESERVE);
-        assertTrue(campaign.allowEarlyWithdrawal);
     }
 
     function test_CreateCampaign_InvalidParameters() public {
@@ -38,7 +36,6 @@ contract CrowdfundingFactoryTest is BaseTest {
             CAMPAIGN_DURATION,
             CREATOR_RESERVE,
             LIQUIDITY_PERCENTAGE,
-            true,
             "Test Token",
             "TEST"
         );
@@ -51,7 +48,6 @@ contract CrowdfundingFactoryTest is BaseTest {
             CAMPAIGN_DURATION,
             CREATOR_RESERVE,
             LIQUIDITY_PERCENTAGE,
-            true,
             "Test Token",
             "TEST"
         );
@@ -64,7 +60,6 @@ contract CrowdfundingFactoryTest is BaseTest {
             12 hours, // Below minimum
             CREATOR_RESERVE,
             LIQUIDITY_PERCENTAGE,
-            true,
             "Test Token",
             "TEST"
         );
@@ -77,7 +72,6 @@ contract CrowdfundingFactoryTest is BaseTest {
             CAMPAIGN_DURATION,
             60, // Above 50%
             LIQUIDITY_PERCENTAGE,
-            true,
             "Test Token",
             "TEST"
         );
@@ -91,26 +85,19 @@ contract CrowdfundingFactoryTest is BaseTest {
         // Test empty metadata URI
         vm.expectRevert("CrowdfundingFactory: Empty metadata URI");
         factory.createCampaign(
-            "", FUNDING_GOAL, CAMPAIGN_DURATION, CREATOR_RESERVE, LIQUIDITY_PERCENTAGE, true, "Test Token", "TEST"
+            "", FUNDING_GOAL, CAMPAIGN_DURATION, CREATOR_RESERVE, LIQUIDITY_PERCENTAGE, "Test Token", "TEST"
         );
 
         // Test empty token name
         vm.expectRevert("CrowdfundingFactory: Empty token name");
         factory.createCampaign(
-            "ipfs://test", FUNDING_GOAL, CAMPAIGN_DURATION, CREATOR_RESERVE, LIQUIDITY_PERCENTAGE, true, "", "TEST"
+            "ipfs://test", FUNDING_GOAL, CAMPAIGN_DURATION, CREATOR_RESERVE, LIQUIDITY_PERCENTAGE, "", "TEST"
         );
 
         // Test empty token symbol
         vm.expectRevert("CrowdfundingFactory: Empty token symbol");
         factory.createCampaign(
-            "ipfs://test",
-            FUNDING_GOAL,
-            CAMPAIGN_DURATION,
-            CREATOR_RESERVE,
-            LIQUIDITY_PERCENTAGE,
-            true,
-            "Test Token",
-            ""
+            "ipfs://test", FUNDING_GOAL, CAMPAIGN_DURATION, CREATOR_RESERVE, LIQUIDITY_PERCENTAGE, "Test Token", ""
         );
 
         vm.stopPrank();
@@ -126,7 +113,6 @@ contract CrowdfundingFactoryTest is BaseTest {
             CAMPAIGN_DURATION,
             CREATOR_RESERVE,
             LIQUIDITY_PERCENTAGE,
-            true,
             "Test Token 1",
             "TEST1"
         );
@@ -137,7 +123,6 @@ contract CrowdfundingFactoryTest is BaseTest {
             CAMPAIGN_DURATION,
             CREATOR_RESERVE,
             LIQUIDITY_PERCENTAGE,
-            false,
             "Test Token 2",
             "TEST2"
         );
@@ -165,7 +150,6 @@ contract CrowdfundingFactoryTest is BaseTest {
             CAMPAIGN_DURATION,
             CREATOR_RESERVE,
             LIQUIDITY_PERCENTAGE,
-            true,
             "Test Token 1",
             "TEST1"
         );
@@ -177,7 +161,6 @@ contract CrowdfundingFactoryTest is BaseTest {
             CAMPAIGN_DURATION,
             CREATOR_RESERVE,
             LIQUIDITY_PERCENTAGE,
-            true,
             "Test Token 2",
             "TEST2"
         );
