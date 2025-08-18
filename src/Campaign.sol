@@ -25,7 +25,8 @@ contract Campaign is ICampaign, ICampaignEvents, ReentrancyGuard, Ownable {
     address[] public contributors;
 
     uint256 public constant MIN_CONTRIBUTION = 1e6; // 1 USDC (6 decimals)
-    uint256 public constant MAX_CREATOR_RESERVE = 50; // 50% max
+    uint256 public constant TOTAL_SUPPLY = 1e27; // 1 billion tokens (18 decimals)
+    uint256 public constant CREATOR_RESERVE_PERCENTAGE = 25; // 25% fixed
     uint256 public constant MAX_LIQUIDITY_PERCENTAGE = 80; // 80% max
     uint256 public constant EXTENSION_LIMIT = 30 days;
 
@@ -60,7 +61,7 @@ contract Campaign is ICampaign, ICampaignEvents, ReentrancyGuard, Ownable {
         require(_creator != address(0), "Campaign: Invalid creator address");
         require(_fundingGoal > 0, "Campaign: Funding goal must be greater than zero");
         require(_duration > 0, "Campaign: Duration must be greater than zero");
-        require(_creatorReservePercentage <= MAX_CREATOR_RESERVE, "Campaign: Creator reserve too high");
+        require(_creatorReservePercentage == CREATOR_RESERVE_PERCENTAGE, "Campaign: Creator reserve must be 25%");
         require(_liquidityPercentage <= MAX_LIQUIDITY_PERCENTAGE, "Campaign: Liquidity percentage too high");
         require(_pricingCurve != address(0), "Campaign: Invalid pricing curve address");
         require(_dexIntegrator != address(0), "Campaign: Invalid DEX integrator address");
@@ -88,9 +89,7 @@ contract Campaign is ICampaign, ICampaignEvents, ReentrancyGuard, Ownable {
         require(amount >= MIN_CONTRIBUTION, "Campaign: Contribution below minimum");
         require(msg.sender != campaignData.creator, "Campaign: Creator cannot contribute");
 
-        uint256 totalDuration = campaignData.deadline - campaignData.createdAt;
-
-        uint256 tokenAllocation = pricingCurve.calculateTokenAllocation(amount, totalDuration);
+        uint256 tokenAllocation = pricingCurve.calculateTokenAllocation(amount, campaignData.fundingGoal);
 
         usdcToken.safeTransferFrom(msg.sender, address(this), amount);
 
@@ -159,18 +158,20 @@ contract Campaign is ICampaign, ICampaignEvents, ReentrancyGuard, Ownable {
         uint256 usdcForLiquidity = (campaignData.totalRaised * campaignData.liquidityPercentage) / 100;
         require(usdcForLiquidity > 0, "Campaign: No USDC for liquidity");
 
-        _mintCreatorReserve();
+        // Mint creator reserve excluding liquidity portion
+        _mintCreatorReserveWithoutLiquidity();
 
-        uint256 creatorTokens = campaignToken.balanceOf(campaignData.creator);
-        require(creatorTokens > 0, "Campaign: No creator tokens for liquidity");
+        // Calculate and mint tokens for liquidity pool
+        uint256 totalCreatorTokens = (TOTAL_SUPPLY * CREATOR_RESERVE_PERCENTAGE) / 100;
+        uint256 tokensForLiquidity = (totalCreatorTokens * campaignData.liquidityPercentage) / 100;
 
-        campaignToken.mint(address(this), creatorTokens);
+        campaignToken.mint(address(this), tokensForLiquidity);
 
-        IERC20(address(campaignToken)).approve(address(dexIntegrator), creatorTokens);
+        IERC20(address(campaignToken)).approve(address(dexIntegrator), tokensForLiquidity);
         usdcToken.approve(address(dexIntegrator), usdcForLiquidity);
 
         (uint256 tokenAmount, uint256 usdcAmount,) =
-            dexIntegrator.addLiquidity(address(campaignToken), creatorTokens, address(usdcToken), usdcForLiquidity);
+            dexIntegrator.addLiquidity(address(campaignToken), tokensForLiquidity, address(usdcToken), usdcForLiquidity);
 
         uint256 remainingUSDC = campaignData.totalRaised - usdcAmount;
         if (remainingUSDC > 0) {
@@ -208,30 +209,25 @@ contract Campaign is ICampaign, ICampaignEvents, ReentrancyGuard, Ownable {
     }
 
     function _mintCreatorReserve() internal {
-        if (campaignData.creatorReservePercentage > 0) {
-            uint256 totalTokenSupply = _calculateTotalTokenSupply();
-            uint256 creatorTokens = (totalTokenSupply * campaignData.creatorReservePercentage) / 100;
+        uint256 creatorTokens = (TOTAL_SUPPLY * CREATOR_RESERVE_PERCENTAGE) / 100;
 
-            if (creatorTokens > 0) {
-                campaignToken.mint(campaignData.creator, creatorTokens);
-            }
+        if (creatorTokens > 0) {
+            campaignToken.mint(campaignData.creator, creatorTokens);
         }
     }
 
-    function _calculateTotalTokenSupply() internal view returns (uint256) {
-        uint256 totalTokensForContributors = 0;
+    function _mintCreatorReserveWithoutLiquidity() internal {
+        uint256 totalCreatorTokens = (TOTAL_SUPPLY * CREATOR_RESERVE_PERCENTAGE) / 100;
+        uint256 tokensForLiquidity = (totalCreatorTokens * campaignData.liquidityPercentage) / 100;
+        uint256 creatorTokensToKeep = totalCreatorTokens - tokensForLiquidity;
 
-        for (uint256 i = 0; i < contributors.length; i++) {
-            totalTokensForContributors += contributions[contributors[i]].tokenAllocation;
+        if (creatorTokensToKeep > 0) {
+            campaignToken.mint(campaignData.creator, creatorTokensToKeep);
         }
+    }
 
-        if (campaignData.creatorReservePercentage > 0) {
-            uint256 creatorPercentage = campaignData.creatorReservePercentage;
-            uint256 contributorPercentage = 100 - creatorPercentage;
-            return (totalTokensForContributors * 100) / contributorPercentage;
-        }
-
-        return totalTokensForContributors;
+    function _calculateTotalTokenSupply() internal pure returns (uint256) {
+        return TOTAL_SUPPLY;
     }
 
     // View functions
@@ -244,9 +240,7 @@ contract Campaign is ICampaign, ICampaignEvents, ReentrancyGuard, Ownable {
     }
 
     function calculateTokenAllocation(uint256 contributionAmount) external view returns (uint256) {
-        uint256 totalDuration = campaignData.deadline - campaignData.createdAt;
-
-        return pricingCurve.calculateTokenAllocation(contributionAmount, totalDuration);
+        return pricingCurve.calculateTokenAllocation(contributionAmount, campaignData.fundingGoal);
     }
 
     function getCampaignState() external view returns (CampaignState) {

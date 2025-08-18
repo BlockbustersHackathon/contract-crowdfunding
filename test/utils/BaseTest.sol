@@ -19,7 +19,7 @@ contract BaseTest is Test {
     uint256 constant FUNDING_GOAL = 10000e6; // 10,000 USDC
     uint256 constant CAMPAIGN_DURATION = 30 days;
     uint256 constant MIN_CONTRIBUTION = 1e6; // 1 USDC
-    uint256 constant CREATOR_RESERVE = 20; // 20%
+    uint256 constant CREATOR_RESERVE = 25; // 25%
     uint256 constant LIQUIDITY_PERCENTAGE = 30; // 30%
 
     // Test accounts

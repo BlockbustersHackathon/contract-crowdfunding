@@ -195,17 +195,14 @@ contract ContributionFuzzTest is BaseTest {
         assertGt(tokens3, 0);
     }
 
-    function testFuzz_CampaignParameters_Validation(
-        uint256 fundingGoal,
-        uint256 duration,
-        uint256 creatorReserve,
-        uint256 liquidityPercentage
-    ) public {
+    function testFuzz_CampaignParameters_Validation(uint256 fundingGoal, uint256 duration, uint256 liquidityPercentage)
+        public
+    {
         // Test parameter validation with fuzzing
         fundingGoal = bound(fundingGoal, 50e6, 15000000e6); // 50 to 15M USDC
         duration = bound(duration, 0.5 days, 365 days);
-        creatorReserve = bound(creatorReserve, 0, 100);
-        liquidityPercentage = bound(liquidityPercentage, 0, 100);
+        uint256 creatorReserve = 25; // Fixed at 25%
+        liquidityPercentage = bound(liquidityPercentage, 0, 80); // Max 80% as per contract
 
         vm.prank(creator);
 

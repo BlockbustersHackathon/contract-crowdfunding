@@ -74,7 +74,7 @@ contract DeployTest is Test {
             "ipfs://test-metadata",
             1000e6, // 1000 USDC funding goal
             30 days,
-            10, // 10% creator reserve
+            25, // 25% creator reserve
             20, // 20% liquidity
             "Test Token",
             "TEST"

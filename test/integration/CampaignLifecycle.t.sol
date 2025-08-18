@@ -220,7 +220,7 @@ contract CampaignLifecycleTest is BaseTest {
             "ipfs://campaign2",
             15000e6, // 15000 USDC
             CAMPAIGN_DURATION * 2,
-            30, // Different reserve
+            25, // Creator reserve must be 25%
             50, // Different liquidity
             "Token 2",
             "TK2"
