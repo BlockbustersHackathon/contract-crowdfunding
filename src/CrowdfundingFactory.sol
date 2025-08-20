@@ -21,7 +21,7 @@ contract CrowdfundingFactory is ICrowdfundingFactory, ICampaignEvents, Ownable, 
     mapping(address => uint256[]) public contributorCampaigns;
 
     uint256 public campaignCounter;
-    uint256 public platformFeePercentage = 250; // 2.5%
+    uint256 public platformFeePercentage = 0; // 2.5%
     address public feeRecipient;
 
     uint256 public constant MIN_FUNDING_GOAL = 100e6; // 100 USDC
