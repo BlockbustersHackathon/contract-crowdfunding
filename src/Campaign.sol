@@ -47,6 +47,7 @@ contract Campaign is ICampaign, ICampaignEvents, ReentrancyGuard, Ownable {
 
     constructor(
         address _creator,
+        string memory _name,
         string memory _metadataURI,
         uint256 _fundingGoal,
         uint256 _duration,
@@ -59,6 +60,7 @@ contract Campaign is ICampaign, ICampaignEvents, ReentrancyGuard, Ownable {
         address _owner
     ) Ownable(_owner) {
         require(_creator != address(0), "Campaign: Invalid creator address");
+        require(bytes(_name).length > 0, "Campaign: Name cannot be empty");
         require(_fundingGoal > 0, "Campaign: Funding goal must be greater than zero");
         require(_duration > 0, "Campaign: Duration must be greater than zero");
         require(_creatorReservePercentage == CREATOR_RESERVE_PERCENTAGE, "Campaign: Creator reserve must be 25%");
@@ -69,6 +71,7 @@ contract Campaign is ICampaign, ICampaignEvents, ReentrancyGuard, Ownable {
 
         campaignData = CampaignData({
             creator: _creator,
+            name: _name,
             metadataURI: _metadataURI,
             fundingGoal: _fundingGoal,
             deadline: block.timestamp + _duration,
@@ -151,7 +154,8 @@ contract Campaign is ICampaign, ICampaignEvents, ReentrancyGuard, Ownable {
         emit RefundIssued(0, msg.sender, amount);
     }
 
-    function createLiquidityPool() external nonReentrant onlyCreator {
+    function createLiquidityPool() external nonReentrant{
+        updateCampaignState();
         require(campaignData.state == CampaignState.Succeeded, "Campaign: Campaign must be successful");
         require(campaignData.liquidityPercentage > 0, "Campaign: No liquidity allocation");
 

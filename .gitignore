@@ -14,3 +14,5 @@ docs/
 .env
 
 local_docs/
+
+**/__pycache__/*

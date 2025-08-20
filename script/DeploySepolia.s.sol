@@ -13,7 +13,7 @@ contract DeploySepoliaScript is Script {
     address constant UNISWAP_FACTORY = 0xF62c03E08ada871A0bEb309762E260a7a6a880E6;
     
     // Sepolia USDC address (or mock USDC for testing)
-    address constant USDC_TOKEN = 0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238;
+    address constant USDC_TOKEN = 0x408A35083AbE22eC07a0cAB3caB0DA8f57b767Fb;
 
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
@@ -40,16 +40,12 @@ contract DeploySepoliaScript is Script {
         DEXIntegrator dexIntegrator = new DEXIntegrator(UNISWAP_ROUTER, UNISWAP_FACTORY);
         console.log("DEXIntegrator deployed at:", address(dexIntegrator));
 
-        // Fee recipient (deployer for now)
-        address feeRecipient = deployer;
-
         // Deploy CrowdfundingFactory
         CrowdfundingFactory crowdfundingFactory = new CrowdfundingFactory(
             address(tokenFactory),
             address(pricingCurve),
             address(dexIntegrator),
             USDC_TOKEN,
-            feeRecipient,
             deployer // owner
         );
         console.log("CrowdfundingFactory deployed at:", address(crowdfundingFactory));
@@ -67,6 +63,5 @@ contract DeploySepoliaScript is Script {
         console.log("USDC Token:", USDC_TOKEN);
         console.log("Uniswap Router:", UNISWAP_ROUTER);
         console.log("Uniswap Factory:", UNISWAP_FACTORY);
-        console.log("Fee Recipient:", feeRecipient);
     }
 }

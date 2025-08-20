@@ -206,7 +206,8 @@ contract CampaignLifecycleTest is BaseTest {
     function test_MultipleCampaigns_SameCreator() public {
         vm.startPrank(creator);
 
-        uint256 campaign1Id = factory.createCampaign(
+        (uint256 campaign1Id,) = factory.createCampaign(
+            "Campaign 1",
             "ipfs://campaign1",
             5000e6, // 5000 USDC
             CAMPAIGN_DURATION,
@@ -216,7 +217,8 @@ contract CampaignLifecycleTest is BaseTest {
             "TK1"
         );
 
-        uint256 campaign2Id = factory.createCampaign(
+        (uint256 campaign2Id,) = factory.createCampaign(
+            "Campaign 2",
             "ipfs://campaign2",
             15000e6, // 15000 USDC
             CAMPAIGN_DURATION * 2,
@@ -260,8 +262,8 @@ contract CampaignLifecycleTest is BaseTest {
         uint256 campaign1Id = createTestCampaign();
 
         vm.prank(makeAddr("anotherCreator"));
-        uint256 campaign2Id =
-            factory.createCampaign("ipfs://campaign2", 8000e6, CAMPAIGN_DURATION, 25, 40, "Token 2", "TK2");
+        (uint256 campaign2Id,) =
+            factory.createCampaign("Campaign 2", "ipfs://campaign2", 8000e6, CAMPAIGN_DURATION, 25, 40, "Token 2", "TK2");
 
         // Contributor participates in both campaigns
         contributeToCompaign(campaign1Id, contributor1, 5000e6); // 5000 USDC

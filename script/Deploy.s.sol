@@ -33,16 +33,12 @@ contract DeployScript is Script {
         // USDC token address (replace with actual USDC address for your target network)
         address usdcToken = vm.envAddress("USDC_TOKEN");
 
-        // Fee recipient (could be the deployer or a treasury address)
-        address feeRecipient = vm.envOr("FEE_RECIPIENT", deployer);
-
         // Deploy CrowdfundingFactory
         CrowdfundingFactory crowdfundingFactory = new CrowdfundingFactory(
             address(tokenFactory),
             address(pricingCurve),
             address(dexIntegrator),
             usdcToken,
-            feeRecipient,
             deployer // owner
         );
         console.log("CrowdfundingFactory deployed at:", address(crowdfundingFactory));
@@ -57,6 +53,5 @@ contract DeployScript is Script {
         console.log("DEXIntegrator:", address(dexIntegrator));
         console.log("CrowdfundingFactory:", address(crowdfundingFactory));
         console.log("USDC Token:", usdcToken);
-        console.log("Fee Recipient:", feeRecipient);
     }
 }

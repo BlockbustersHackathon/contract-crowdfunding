@@ -1,0 +1,14 @@
+{
+  "network": "sepolia",
+  "chainId": 11155111,
+  "deployed": "2025-08-20T15:31:07Z",
+  "contracts": {
+    "MockUSDC": "0x408A35083AbE22eC07a0cAB3caB0DA8f57b767Fb"
+  },
+  "token": {
+    "name": "USD Coin",
+    "symbol": "USDC",
+    "decimals": 6,
+    "initialSupply": "1000000000000000"
+  }
+}

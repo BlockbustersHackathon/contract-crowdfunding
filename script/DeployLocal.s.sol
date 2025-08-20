@@ -46,16 +46,12 @@ contract DeployLocalScript is Script {
         DEXIntegrator dexIntegrator = new DEXIntegrator(address(mockRouter), address(mockFactory));
         console.log("DEXIntegrator deployed at:", address(dexIntegrator));
 
-        // Fee recipient (deployer for local testing)
-        address feeRecipient = deployer;
-
         // Deploy CrowdfundingFactory
         CrowdfundingFactory crowdfundingFactory = new CrowdfundingFactory(
             address(tokenFactory),
             address(pricingCurve),
             address(dexIntegrator),
             address(mockUSDC),
-            feeRecipient,
             deployer // owner
         );
         console.log("CrowdfundingFactory deployed at:", address(crowdfundingFactory));
@@ -72,6 +68,5 @@ contract DeployLocalScript is Script {
         console.log("PricingCurve:", address(pricingCurve));
         console.log("DEXIntegrator:", address(dexIntegrator));
         console.log("CrowdfundingFactory:", address(crowdfundingFactory));
-        console.log("Fee Recipient:", feeRecipient);
     }
 }

@@ -6,7 +6,8 @@ import "../utils/BaseTest.sol";
 contract CrowdfundingFactoryTest is BaseTest {
     function test_CreateCampaign_Success() public {
         vm.prank(creator);
-        uint256 campaignId = factory.createCampaign(
+        (uint256 campaignId,) = factory.createCampaign(
+            "Test Campaign",
             "ipfs://test-metadata",
             FUNDING_GOAL,
             CAMPAIGN_DURATION,
@@ -31,6 +32,7 @@ contract CrowdfundingFactoryTest is BaseTest {
         // Test invalid funding goal - too low
         vm.expectRevert("CrowdfundingFactory: Invalid funding goal");
         factory.createCampaign(
+            "Test Campaign",
             "ipfs://test",
             50e6, // Below minimum (100 USDC)
             CAMPAIGN_DURATION,
@@ -43,6 +45,7 @@ contract CrowdfundingFactoryTest is BaseTest {
         // Test invalid funding goal - too high
         vm.expectRevert("CrowdfundingFactory: Invalid funding goal");
         factory.createCampaign(
+            "Test Campaign",
             "ipfs://test",
             15000000e6, // Above maximum (10M USDC)
             CAMPAIGN_DURATION,
@@ -52,12 +55,13 @@ contract CrowdfundingFactoryTest is BaseTest {
             "TEST"
         );
 
-        // Test invalid duration - too short
+        // Test invalid duration - too long
         vm.expectRevert("CrowdfundingFactory: Invalid duration");
         factory.createCampaign(
+            "Test Campaign",
             "ipfs://test",
             FUNDING_GOAL,
-            12 hours, // Below minimum
+            181 days, // Above maximum (180 days)
             CREATOR_RESERVE,
             LIQUIDITY_PERCENTAGE,
             "Test Token",
@@ -67,6 +71,7 @@ contract CrowdfundingFactoryTest is BaseTest {
         // Test creator reserve too high
         vm.expectRevert("CrowdfundingFactory: Creator reserve too high");
         factory.createCampaign(
+            "Test Campaign",
             "ipfs://test",
             FUNDING_GOAL,
             CAMPAIGN_DURATION,
@@ -85,19 +90,19 @@ contract CrowdfundingFactoryTest is BaseTest {
         // Test empty metadata URI
         vm.expectRevert("CrowdfundingFactory: Empty metadata URI");
         factory.createCampaign(
-            "", FUNDING_GOAL, CAMPAIGN_DURATION, CREATOR_RESERVE, LIQUIDITY_PERCENTAGE, "Test Token", "TEST"
+            "Test Campaign", "", FUNDING_GOAL, CAMPAIGN_DURATION, CREATOR_RESERVE, LIQUIDITY_PERCENTAGE, "Test Token", "TEST"
         );
 
         // Test empty token name
         vm.expectRevert("CrowdfundingFactory: Empty token name");
         factory.createCampaign(
-            "ipfs://test", FUNDING_GOAL, CAMPAIGN_DURATION, CREATOR_RESERVE, LIQUIDITY_PERCENTAGE, "", "TEST"
+            "Test Campaign", "ipfs://test", FUNDING_GOAL, CAMPAIGN_DURATION, CREATOR_RESERVE, LIQUIDITY_PERCENTAGE, "", "TEST"
         );
 
         // Test empty token symbol
         vm.expectRevert("CrowdfundingFactory: Empty token symbol");
         factory.createCampaign(
-            "ipfs://test", FUNDING_GOAL, CAMPAIGN_DURATION, CREATOR_RESERVE, LIQUIDITY_PERCENTAGE, "Test Token", ""
+            "Test Campaign", "ipfs://test", FUNDING_GOAL, CAMPAIGN_DURATION, CREATOR_RESERVE, LIQUIDITY_PERCENTAGE, "Test Token", ""
         );
 
         vm.stopPrank();
@@ -107,7 +112,8 @@ contract CrowdfundingFactoryTest is BaseTest {
         vm.startPrank(creator);
 
         // Create multiple campaigns
-        uint256 campaignId1 = factory.createCampaign(
+        (uint256 campaignId1,) = factory.createCampaign(
+            "Campaign 1",
             "ipfs://test1",
             FUNDING_GOAL,
             CAMPAIGN_DURATION,
@@ -117,7 +123,8 @@ contract CrowdfundingFactoryTest is BaseTest {
             "TEST1"
         );
 
-        uint256 campaignId2 = factory.createCampaign(
+        (uint256 campaignId2,) = factory.createCampaign(
+            "Campaign 2",
             "ipfs://test2",
             FUNDING_GOAL * 2,
             CAMPAIGN_DURATION,
@@ -145,6 +152,7 @@ contract CrowdfundingFactoryTest is BaseTest {
         vm.startPrank(creator);
 
         factory.createCampaign(
+            "Campaign 1",
             "ipfs://test1",
             FUNDING_GOAL,
             CAMPAIGN_DURATION,
@@ -156,6 +164,7 @@ contract CrowdfundingFactoryTest is BaseTest {
         assertEq(factory.getCampaignCount(), 1);
 
         factory.createCampaign(
+            "Campaign 2",
             "ipfs://test2",
             FUNDING_GOAL,
             CAMPAIGN_DURATION,
@@ -174,35 +183,7 @@ contract CrowdfundingFactoryTest is BaseTest {
         factory.getCampaign(999);
     }
 
-    function test_SetPlatformFee_OnlyOwner() public {
-        vm.prank(deployer);
-        factory.setPlatformFee(500); // 5%
+    // Note: setPlatformFee function was removed since platform fees are no longer used
 
-        vm.prank(creator);
-        vm.expectRevert();
-        factory.setPlatformFee(600);
-    }
-
-    function test_SetPlatformFee_TooHigh() public {
-        vm.prank(deployer);
-        vm.expectRevert("CrowdfundingFactory: Fee too high");
-        factory.setPlatformFee(1100); // 11% - above max
-    }
-
-    function test_SetFeeRecipient_OnlyOwner() public {
-        address newRecipient = makeAddr("newRecipient");
-
-        vm.prank(deployer);
-        factory.setFeeRecipient(newRecipient);
-
-        vm.prank(creator);
-        vm.expectRevert();
-        factory.setFeeRecipient(newRecipient);
-    }
-
-    function test_SetFeeRecipient_InvalidAddress() public {
-        vm.prank(deployer);
-        vm.expectRevert("CrowdfundingFactory: Invalid fee recipient");
-        factory.setFeeRecipient(address(0));
-    }
+    // Note: setFeeRecipient function was also removed since fee recipient is no longer used
 }
