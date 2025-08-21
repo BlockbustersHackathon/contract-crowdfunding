@@ -440,7 +440,7 @@ class SepoliaTestSuite:
         logger.info(f"Donor Account: {donor_address}")
         
         results = {
-            # "scenario_1_success_no_liquidity": self.test_scenario_1_success_no_liquidity(),
+            "scenario_1_success_no_liquidity": self.test_scenario_1_success_no_liquidity(),
             "scenario_2_success_with_liquidity": self.test_scenario_2_success_with_liquidity(), 
             "scenario_3_failure_and_refund": self.test_scenario_3_failure_and_refund()
         }

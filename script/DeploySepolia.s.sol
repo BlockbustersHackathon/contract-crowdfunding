@@ -9,11 +9,11 @@ import "../src/DEXIntegrator.sol";
 
 contract DeploySepoliaScript is Script {
     // Sepolia Uniswap V2 addresses
-    address constant UNISWAP_ROUTER = 0xeE567Fe1712Faf6149d80dA1E6934E354124CfE3;
-    address constant UNISWAP_FACTORY = 0xF62c03E08ada871A0bEb309762E260a7a6a880E6;
+    address constant UNISWAP_ROUTER = 0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24;
+    address constant UNISWAP_FACTORY = 0x8909Dc15e40173Ff4699343b6eB8132c65e18eC6;
     
     // Sepolia USDC address (or mock USDC for testing)
-    address constant USDC_TOKEN = 0x408A35083AbE22eC07a0cAB3caB0DA8f57b767Fb;
+    address constant USDC_TOKEN = 0x6B38Bc61C90F80F77F3A65B0EA470259e682951B;
 
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");

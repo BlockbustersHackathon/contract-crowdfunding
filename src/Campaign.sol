@@ -27,7 +27,7 @@ contract Campaign is ICampaign, ICampaignEvents, ReentrancyGuard, Ownable {
     uint256 public constant MIN_CONTRIBUTION = 1e6; // 1 USDC (6 decimals)
     uint256 public constant TOTAL_SUPPLY = 1e27; // 1 billion tokens (18 decimals)
     uint256 public constant CREATOR_RESERVE_PERCENTAGE = 25; // 25% fixed
-    uint256 public constant MAX_LIQUIDITY_PERCENTAGE = 80; // 80% max
+    uint256 public constant MAX_LIQUIDITY_PERCENTAGE = 100; // 80% max
     uint256 public constant EXTENSION_LIMIT = 30 days;
 
     modifier onlyCreator() {
@@ -90,7 +90,6 @@ contract Campaign is ICampaign, ICampaignEvents, ReentrancyGuard, Ownable {
 
     function contribute(uint256 amount) external nonReentrant onlyActiveState campaignNotExpired {
         require(amount >= MIN_CONTRIBUTION, "Campaign: Contribution below minimum");
-        require(msg.sender != campaignData.creator, "Campaign: Creator cannot contribute");
 
         uint256 tokenAllocation = pricingCurve.calculateTokenAllocation(amount, campaignData.fundingGoal);
 

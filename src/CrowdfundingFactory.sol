@@ -27,8 +27,6 @@ contract CrowdfundingFactory is ICrowdfundingFactory, ICampaignEvents, Ownable, 
     uint256 public constant MIN_DURATION = 0 days;
     uint256 public constant MAX_DURATION = 180 days;
 
-    event PlatformFeeUpdated(uint256 oldFee, uint256 newFee);
-
     modifier validCampaignParameters(
         uint256 fundingGoal,
         uint256 duration,
