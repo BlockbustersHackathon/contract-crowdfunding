@@ -1,0 +1,17 @@
+[0;34m[TEST][0m Sepolia Integration Tests
+[0;32m[INFO][0m Python version: 3.13.4
+[0;32m[INFO][0m Cast version: cast Version: 1.0.0-stable
+Commit SHA: e144b82070619b6e10485c38734b4d4d45aebe04
+Build Timestamp: 2025-02-13T20:02:34.979686000Z (1739476954)
+Build Profile: maxperf
+[0;32m[INFO][0m Checking Python dependencies...
+[0;32m[INFO][0m Validating environment configuration...
+[0;32m[INFO][0m Testing RPC connectivity...
+[0;32m[INFO][0m Creator account: 0x870a62A5ea54477DE889d00E74026D5d1d9732fE
+[0;32m[INFO][0m Donor account: 0xA77E3Ad20aC9E201225c33d9b95890B8aE3F6d50
+[0;32m[INFO][0m Checking account balances...
+[0;32m[INFO][0m Donor USDC balance: 1000000.000000 USDC
+[0;34m[TEST][0m Running Integration Tests
+[0;32m[INFO][0m This will create test campaigns with 2-minute durations
+[0;32m[INFO][0m Total test time: approximately 10-15 minutes
+[0;32m[INFO][0m 

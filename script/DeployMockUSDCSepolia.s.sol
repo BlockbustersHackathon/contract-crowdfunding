@@ -19,8 +19,6 @@ contract DeployMockUSDCSepoliaScript is Script {
 
         // Log deployment summary
         console.log("\n=== MockUSDC Sepolia Deployment Summary ===");
-        console.log("Network: Sepolia Testnet");
-        console.log("Chain ID: 11155111");
         console.log("Deployer:", deployer);
         console.log("Contract Name: USD Coin");
         console.log("Symbol: USDC");
@@ -29,6 +27,5 @@ contract DeployMockUSDCSepoliaScript is Script {
         console.log("Contract Address:", address(mockUSDC));
         console.log("Owner:", deployer);
         console.log("\nContract can be verified on Etherscan:");
-        console.log("https://sepolia.etherscan.io/address/", address(mockUSDC));
     }
 }

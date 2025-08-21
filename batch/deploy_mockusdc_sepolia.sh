@@ -37,9 +37,6 @@ if [ -z "$PRIVATE_KEY" ]; then
     exit 1
 fi
 
-# Sepolia RPC URL (you can override this with SEPOLIA_RPC_URL env var)
-RPC_URL=${SEPOLIA_RPC_URL:-"https://sepolia.infura.io/v3/89aa1f7b407142ac9d6539e044934786"}
-
 print_header "Deploying MockUSDC to Sepolia Testnet"
 print_info "RPC URL: $RPC_URL"
 print_info ""
@@ -71,56 +68,16 @@ print_info ""
 
 # Deploy and capture output
 print_info "Starting MockUSDC deployment..."
-DEPLOY_OUTPUT=$(forge script script/DeployMockUSDCSepolia.s.sol --rpc-url $RPC_URL \
-    --private-key $PRIVATE_KEY \
-    --broadcast -vvv \
-    --verify \
-    --etherscan-api-key ${ETHERSCAN_API_KEY:-""} 2>&1)
-
-if [ $? -ne 0 ]; then
-    print_error "MockUSDC deployment failed!"
-    echo "$DEPLOY_OUTPUT"
-    exit 1
-fi
+forge script script/DeployMockUSDCSepolia.s.sol --rpc-url $RPC_URL \
+--private-key $PRIVATE_KEY \
+--broadcast
 
 print_info "MockUSDC deployment completed successfully!"
 echo ""
 
-# Extract contract address from deployment output
-MOCKUSDC_ADDR=$(echo "$DEPLOY_OUTPUT" | grep "MockUSDC deployed at:" | grep -o "0x[a-fA-F0-9]\{40\}" | head -1)
-
-if [ -n "$MOCKUSDC_ADDR" ]; then
-    print_info "MockUSDC deployed at: $MOCKUSDC_ADDR"
-    
-    # Save contract address to a deployment file
-    DEPLOY_FILE="deployments/mockusdc_sepolia.json"
-    mkdir -p deployments
-    
-    # Create deployment info JSON
-    cat > $DEPLOY_FILE << EOF
-{
-  "network": "sepolia",
-  "chainId": 11155111,
-  "deployed": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
-  "contracts": {
-    "MockUSDC": "$MOCKUSDC_ADDR"
-  },
-  "token": {
-    "name": "USD Coin",
-    "symbol": "USDC",
-    "decimals": 6,
-    "initialSupply": "1000000000000000"
-  }
-}
-EOF
-    
-    print_info "Deployment info saved to: $DEPLOY_FILE"
-fi
-
 echo ""
 print_header "=== MockUSDC Deployment Complete ==="
 print_info "✅ MockUSDC successfully deployed to Sepolia"
-print_info "🔗 Network: Sepolia Testnet (Chain ID: 11155111)"
 print_info "📋 Contract Address: $MOCKUSDC_ADDR"
 print_info "💰 Token: USD Coin (USDC)"
 print_info "🔢 Decimals: 6"

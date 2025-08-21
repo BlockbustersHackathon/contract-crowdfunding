@@ -8,7 +8,7 @@ import "../../src/CampaignToken.sol";
 import "../../src/TokenFactory.sol";
 import "../../src/PricingCurve.sol";
 import "../../src/DEXIntegrator.sol";
-import "../mocks/MockUniswapRouter.sol";
+import "../mocks/MockUniswapPositionManager.sol";
 import "../mocks/MockUniswapFactory.sol";
 import "../mocks/MockUSDC.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -35,7 +35,7 @@ contract BaseTest is Test {
     TokenFactory public tokenFactory;
     PricingCurve public pricingCurve;
     DEXIntegrator public dexIntegrator;
-    MockUniswapRouter public mockRouter;
+    MockUniswapPositionManager public mockPositionManager;
     MockUniswapFactory public mockUniswapFactory;
     MockUSDC public usdcToken;
 
@@ -46,13 +46,13 @@ contract BaseTest is Test {
         usdcToken = new MockUSDC();
 
         // Deploy mock Uniswap contracts
-        mockRouter = new MockUniswapRouter();
+        mockPositionManager = new MockUniswapPositionManager();
         mockUniswapFactory = new MockUniswapFactory();
 
         // Deploy core contracts
         tokenFactory = new TokenFactory();
         pricingCurve = new PricingCurve();
-        dexIntegrator = new DEXIntegrator(address(mockRouter), address(mockUniswapFactory));
+        dexIntegrator = new DEXIntegrator(address(mockPositionManager), address(mockUniswapFactory));
 
         // Deploy main factory
         factory = new CrowdfundingFactory(

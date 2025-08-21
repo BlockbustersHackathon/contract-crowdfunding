@@ -7,7 +7,7 @@ import "../../src/TokenFactory.sol";
 import "../../src/PricingCurve.sol";
 import "../../src/DEXIntegrator.sol";
 import "../mocks/MockUSDC.sol";
-import "../mocks/MockUniswapRouter.sol";
+import "../mocks/MockUniswapPositionManager.sol";
 import "../mocks/MockUniswapFactory.sol";
 
 contract DeployTest is Test {
@@ -16,7 +16,7 @@ contract DeployTest is Test {
     DEXIntegrator public dexIntegrator;
     CrowdfundingFactory public crowdfundingFactory;
     MockUSDC public usdc;
-    MockUniswapRouter public uniswapRouter;
+    MockUniswapPositionManager public positionManager;
     MockUniswapFactory public uniswapFactory;
 
     address public deployer = address(0x1);
@@ -27,12 +27,12 @@ contract DeployTest is Test {
         // Deploy mock contracts
         usdc = new MockUSDC();
         uniswapFactory = new MockUniswapFactory();
-        uniswapRouter = new MockUniswapRouter();
+        positionManager = new MockUniswapPositionManager();
 
         // Deploy core contracts in the same order as the deployment script
         tokenFactory = new TokenFactory();
         pricingCurve = new PricingCurve();
-        dexIntegrator = new DEXIntegrator(address(uniswapRouter), address(uniswapFactory));
+        dexIntegrator = new DEXIntegrator(address(positionManager), address(uniswapFactory));
 
         crowdfundingFactory = new CrowdfundingFactory(
             address(tokenFactory), address(pricingCurve), address(dexIntegrator), address(usdc), deployer
@@ -60,8 +60,9 @@ contract DeployTest is Test {
 
     function testDEXIntegratorConfiguration() public view {
         // Verify DEXIntegrator is properly configured
-        assertEq(address(dexIntegrator.uniswapRouter()), address(uniswapRouter), "Uniswap router mismatch");
+        assertEq(address(dexIntegrator.positionManager()), address(positionManager), "Position manager mismatch");
         assertEq(address(dexIntegrator.uniswapFactory()), address(uniswapFactory), "Uniswap factory mismatch");
+        assertEq(dexIntegrator.DEFAULT_FEE(), 3000, "Default fee mismatch");
     }
 
     function testBasicFunctionality() public {

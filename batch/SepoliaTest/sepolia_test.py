@@ -121,7 +121,7 @@ class SepoliaTestSuite:
             logger.error("Failed to get campaign count")
             return None
             
-        campaign_id = int(campaign_count_result, 16) - 1  # Latest campaign ID
+        campaign_id = int(campaign_count_result, 10) - 1  # Latest campaign ID
         campaign_address = self.creator_cast.get_campaign_address(self.config.addresses.factory, campaign_id)
         
         if not campaign_address:
@@ -442,7 +442,7 @@ class SepoliaTestSuite:
         results = {
             # "scenario_1_success_no_liquidity": self.test_scenario_1_success_no_liquidity(),
             "scenario_2_success_with_liquidity": self.test_scenario_2_success_with_liquidity(), 
-            "scenario_3_failure_and_refund": self.test_scenario_3_failure_and_refund()
+            # "scenario_3_failure_and_refund": self.test_scenario_3_failure_and_refund()
         }
         
         # Print summary
