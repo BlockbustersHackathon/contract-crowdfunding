@@ -199,16 +199,16 @@ contract ContributionFuzzTest is BaseTest {
         public
     {
         // Test parameter validation with fuzzing
-        fundingGoal = bound(fundingGoal, 50e6, 15000000e6); // 50 to 15M USDC
-        duration = bound(duration, 0.5 days, 365 days);
+        fundingGoal = bound(fundingGoal, 100e6, 10000000e6); // 100 USDC to 10M USDC (contract limits)
+        duration = bound(duration, 1 days, 180 days); // 1 to 180 days (contract limits)
         uint256 creatorReserve = 25; // Fixed at 25%
         liquidityPercentage = bound(liquidityPercentage, 0, 80); // Max 80% as per contract
 
         vm.prank(creator);
 
         try factory.createCampaign(
-            "ipfs://fuzz-test", fundingGoal, duration, creatorReserve, liquidityPercentage, "Fuzz Token", "FUZZ"
-        ) returns (uint256 newCampaignId) {
+            "Fuzz Campaign", "ipfs://fuzz-test", fundingGoal, duration, creatorReserve, liquidityPercentage, "Fuzz Token", "FUZZ"
+        ) returns (uint256 newCampaignId, address) {
             // If successful, verify the campaign was created properly
             CampaignData memory data = factory.getCampaign(newCampaignId);
             assertEq(data.fundingGoal, fundingGoal);

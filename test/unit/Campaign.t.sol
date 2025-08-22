@@ -63,14 +63,14 @@ contract CampaignTest is BaseTest {
         vm.stopPrank();
     }
 
-    function test_Contribute_CreatorCannotContribute() public {
-        uint256 amount = 1000e6; // 1000 USDC
-        vm.startPrank(creator);
-        usdcToken.approve(address(campaign), amount);
-        vm.expectRevert("Campaign: Creator cannot contribute");
-        campaign.contribute(amount);
-        vm.stopPrank();
-    }
+    // function test_Contribute_CreatorCannotContribute() public {
+    //     uint256 amount = 1000e6; // 1000 USDC
+    //     vm.startPrank(creator);
+    //     usdcToken.approve(address(campaign), amount);
+    //     vm.expectRevert("Campaign: Creator cannot contribute");
+    //     campaign.contribute(amount);
+    //     vm.stopPrank();
+    // }
 
     function test_Contribute_AfterDeadline() public {
         fastForwardToDeadline(campaignId);

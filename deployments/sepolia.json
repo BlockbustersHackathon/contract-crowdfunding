@@ -1,0 +1,8 @@
+{
+  "network": "sepolia",
+  "chainId": 11155111,
+  "deployed": "2025-08-20T15:54:01Z",
+  "contracts": {
+    "CrowdfundingFactory": "0x3B2f066009d29521cd226221A86C69eD70D56599",
+  }
+}

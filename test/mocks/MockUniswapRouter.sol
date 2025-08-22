@@ -35,30 +35,6 @@ contract MockUniswapRouter {
         // In real implementation, this would mint LP tokens to the `to` address
     }
 
-    function addLiquidityETH(
-        address token,
-        uint256 amountTokenDesired,
-        uint256 amountTokenMin,
-        uint256 amountETHMin,
-        address, /* to */
-        uint256 deadline
-    ) external payable returns (uint256 amountToken, uint256 amountETH, uint256 liquidity) {
-        require(deadline >= block.timestamp, "MockRouter: EXPIRED");
-        require(amountTokenDesired >= amountTokenMin, "MockRouter: INSUFFICIENT_TOKEN_AMOUNT");
-        require(msg.value >= amountETHMin, "MockRouter: INSUFFICIENT_ETH_AMOUNT");
-
-        // Transfer tokens from sender
-        IERC20(token).transferFrom(msg.sender, address(this), amountTokenDesired);
-
-        // Mock liquidity calculation
-        amountToken = amountTokenDesired;
-        amountETH = msg.value;
-        liquidity = (amountToken * amountETH) / 1e18; // Simple calculation
-
-        // Mock LP token transfer to recipient
-        // In real implementation, this would mint LP tokens
-    }
-
     function getAmountsOut(uint256 amountIn, address[] calldata path)
         external
         pure

@@ -29,7 +29,6 @@ contract BaseTest is Test {
     address contributor2 = makeAddr("contributor2");
     address contributor3 = makeAddr("contributor3");
     address maliciousUser = makeAddr("maliciousUser");
-    address feeRecipient = makeAddr("feeRecipient");
 
     // Contract instances
     CrowdfundingFactory public factory;
@@ -61,7 +60,6 @@ contract BaseTest is Test {
             address(pricingCurve),
             address(dexIntegrator),
             address(usdcToken),
-            feeRecipient,
             deployer
         );
 
@@ -78,7 +76,8 @@ contract BaseTest is Test {
     // Helper functions
     function createTestCampaign() internal returns (uint256 campaignId) {
         vm.prank(creator);
-        campaignId = factory.createCampaign(
+        (campaignId,) = factory.createCampaign(
+            "Test Campaign",
             "ipfs://test-metadata",
             FUNDING_GOAL,
             CAMPAIGN_DURATION,

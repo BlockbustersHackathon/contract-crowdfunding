@@ -21,17 +21,11 @@ contract CrowdfundingFactory is ICrowdfundingFactory, ICampaignEvents, Ownable, 
     mapping(address => uint256[]) public contributorCampaigns;
 
     uint256 public campaignCounter;
-    uint256 public platformFeePercentage = 250; // 2.5%
-    address public feeRecipient;
 
     uint256 public constant MIN_FUNDING_GOAL = 100e6; // 100 USDC
     uint256 public constant MAX_FUNDING_GOAL = 10000000e6; // 10M USDC
-    uint256 public constant MIN_DURATION = 1 days;
+    uint256 public constant MIN_DURATION = 0 days;
     uint256 public constant MAX_DURATION = 180 days;
-    uint256 public constant MAX_PLATFORM_FEE = 1000; // 10%
-
-    event PlatformFeeUpdated(uint256 oldFee, uint256 newFee);
-    event FeeRecipientUpdated(address oldRecipient, address newRecipient);
 
     modifier validCampaignParameters(
         uint256 fundingGoal,
@@ -44,8 +38,7 @@ contract CrowdfundingFactory is ICrowdfundingFactory, ICampaignEvents, Ownable, 
             "CrowdfundingFactory: Invalid funding goal"
         );
         require(duration >= MIN_DURATION && duration <= MAX_DURATION, "CrowdfundingFactory: Invalid duration");
-        require(creatorReservePercentage <= 50, "CrowdfundingFactory: Creator reserve too high");
-        require(liquidityPercentage <= 80, "CrowdfundingFactory: Liquidity percentage too high");
+        require(creatorReservePercentage == 25, "CrowdfundingFactory: Creator reserve too high");
         _;
     }
 
@@ -54,23 +47,21 @@ contract CrowdfundingFactory is ICrowdfundingFactory, ICampaignEvents, Ownable, 
         address _pricingCurve,
         address _dexIntegrator,
         address _usdcToken,
-        address _feeRecipient,
         address _owner
     ) Ownable(_owner) {
         require(_tokenFactory != address(0), "CrowdfundingFactory: Invalid token factory");
         require(_pricingCurve != address(0), "CrowdfundingFactory: Invalid pricing curve");
         require(_dexIntegrator != address(0), "CrowdfundingFactory: Invalid DEX integrator");
         require(_usdcToken != address(0), "CrowdfundingFactory: Invalid USDC token");
-        require(_feeRecipient != address(0), "CrowdfundingFactory: Invalid fee recipient");
 
         tokenFactory = TokenFactory(_tokenFactory);
         pricingCurve = PricingCurve(_pricingCurve);
         dexIntegrator = DEXIntegrator(_dexIntegrator);
         usdcToken = _usdcToken;
-        feeRecipient = _feeRecipient;
     }
 
     function createCampaign(
+        string memory name,
         string memory metadataURI,
         uint256 fundingGoal,
         uint256 duration,
@@ -82,8 +73,9 @@ contract CrowdfundingFactory is ICrowdfundingFactory, ICampaignEvents, Ownable, 
         external
         nonReentrant
         validCampaignParameters(fundingGoal, duration, creatorReservePercentage, liquidityPercentage)
-        returns (uint256 campaignId)
+        returns (uint256 campaignId, address campaignAddress)
     {
+        require(bytes(name).length > 0, "CrowdfundingFactory: Empty campaign name");
         require(bytes(metadataURI).length > 0, "CrowdfundingFactory: Empty metadata URI");
         require(bytes(tokenName).length > 0, "CrowdfundingFactory: Empty token name");
         require(bytes(tokenSymbol).length > 0, "CrowdfundingFactory: Empty token symbol");
@@ -92,6 +84,7 @@ contract CrowdfundingFactory is ICrowdfundingFactory, ICampaignEvents, Ownable, 
 
         Campaign campaign = new Campaign(
             msg.sender,
+            name,
             metadataURI,
             fundingGoal,
             duration,
@@ -111,9 +104,11 @@ contract CrowdfundingFactory is ICrowdfundingFactory, ICampaignEvents, Ownable, 
         campaigns[campaignId] = campaign;
         creatorCampaigns[msg.sender].push(campaignId);
 
+        campaignAddress = address(campaign);
+
         emit CampaignCreated(campaignId, msg.sender, tokenAddress, fundingGoal, block.timestamp + duration);
 
-        return campaignId;
+        return (campaignId, campaignAddress);
     }
 
     function getCampaign(uint256 campaignId) external view returns (CampaignData memory) {
@@ -133,36 +128,4 @@ contract CrowdfundingFactory is ICrowdfundingFactory, ICampaignEvents, Ownable, 
         require(campaignId < campaignCounter, "CrowdfundingFactory: Campaign does not exist");
         return address(campaigns[campaignId]);
     }
-
-    // Admin functions
-    function setPlatformFee(uint256 newFeePercentage) external onlyOwner {
-        require(newFeePercentage <= MAX_PLATFORM_FEE, "CrowdfundingFactory: Fee too high");
-
-        uint256 oldFee = platformFeePercentage;
-        platformFeePercentage = newFeePercentage;
-
-        emit PlatformFeeUpdated(oldFee, newFeePercentage);
-    }
-
-    function setFeeRecipient(address newFeeRecipient) external onlyOwner {
-        require(newFeeRecipient != address(0), "CrowdfundingFactory: Invalid fee recipient");
-
-        address oldRecipient = feeRecipient;
-        feeRecipient = newFeeRecipient;
-
-        emit FeeRecipientUpdated(oldRecipient, newFeeRecipient);
-    }
-
-    // Platform fees would need to be implemented differently with USDC
-    // This would require collecting USDC fees from campaigns
-
-    // Emergency functions
-    function pauseCampaign(uint256 campaignId) external view onlyOwner {
-        require(campaignId < campaignCounter, "CrowdfundingFactory: Campaign does not exist");
-        // Implementation would depend on adding pause functionality to Campaign contract
-    }
-
-    // Emergency functions would need to handle USDC instead of ETH
-
-    // Removed receive function since we don't accept ETH anymore
 }

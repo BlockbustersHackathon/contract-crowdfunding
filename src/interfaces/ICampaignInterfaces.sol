@@ -5,6 +5,7 @@ import "./ICampaignStructs.sol";
 
 interface ICrowdfundingFactory {
     function createCampaign(
+        string memory name,
         string memory metadataURI,
         uint256 fundingGoal,
         uint256 duration,
@@ -12,7 +13,7 @@ interface ICrowdfundingFactory {
         uint256 liquidityPercentage,
         string memory tokenName,
         string memory tokenSymbol
-    ) external returns (uint256 campaignId);
+    ) external returns (uint256 campaignId, address campaignAddress);
 
     function getCampaign(uint256 campaignId) external view returns (CampaignData memory);
     function getCampaignsByCreator(address creator) external view returns (uint256[] memory);

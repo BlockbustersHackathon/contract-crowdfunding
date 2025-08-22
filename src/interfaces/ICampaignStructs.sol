@@ -9,6 +9,7 @@ enum CampaignState {
 
 struct CampaignData {
     address creator;
+    string name;
     string metadataURI;
     uint256 fundingGoal;
     uint256 deadline;

@@ -20,7 +20,6 @@ contract DeployTest is Test {
     MockUniswapFactory public uniswapFactory;
 
     address public deployer = address(0x1);
-    address public feeRecipient = address(0x2);
 
     function setUp() public {
         vm.startPrank(deployer);
@@ -36,7 +35,7 @@ contract DeployTest is Test {
         dexIntegrator = new DEXIntegrator(address(uniswapRouter), address(uniswapFactory));
 
         crowdfundingFactory = new CrowdfundingFactory(
-            address(tokenFactory), address(pricingCurve), address(dexIntegrator), address(usdc), feeRecipient, deployer
+            address(tokenFactory), address(pricingCurve), address(dexIntegrator), address(usdc), deployer
         );
 
         vm.stopPrank();
@@ -56,7 +55,6 @@ contract DeployTest is Test {
         assertEq(address(crowdfundingFactory.pricingCurve()), address(pricingCurve), "PricingCurve address mismatch");
         assertEq(address(crowdfundingFactory.dexIntegrator()), address(dexIntegrator), "DEXIntegrator address mismatch");
         assertEq(crowdfundingFactory.usdcToken(), address(usdc), "USDC token address mismatch");
-        assertEq(crowdfundingFactory.feeRecipient(), feeRecipient, "Fee recipient mismatch");
         assertEq(crowdfundingFactory.owner(), deployer, "Owner mismatch");
     }
 
@@ -70,7 +68,8 @@ contract DeployTest is Test {
         vm.startPrank(deployer);
 
         // Test creating a campaign to ensure deployment is functional
-        uint256 campaignId = crowdfundingFactory.createCampaign(
+        (uint256 campaignId, address campaignAddress) = crowdfundingFactory.createCampaign(
+            "Test Campaign",
             "ipfs://test-metadata",
             1000e6, // 1000 USDC funding goal
             30 days,
@@ -82,6 +81,7 @@ contract DeployTest is Test {
 
         assertEq(campaignId, 0, "First campaign should have ID 0");
         assertEq(crowdfundingFactory.getCampaignCount(), 1, "Campaign count should be 1");
+        assertNotEq(campaignAddress, address(0), "Campaign address should not be zero");
 
         vm.stopPrank();
     }

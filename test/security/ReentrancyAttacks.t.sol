@@ -68,7 +68,8 @@ contract ReentrancyAttackTest is BaseTest {
     function test_WithdrawFunds_ReentrancyProtection() public {
         // Create campaign where creator is a malicious contract
         vm.startPrank(address(maliciousContract));
-        uint256 maliciousCampaignId = factory.createCampaign(
+        (uint256 maliciousCampaignId,) = factory.createCampaign(
+            "Malicious Campaign",
             "ipfs://malicious-campaign",
             5000e6, // 5000 USDC
             CAMPAIGN_DURATION,
